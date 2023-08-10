@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from datetime import timedelta
 # Create your models here.
 
 
@@ -47,12 +48,12 @@ class Airport(models.Model):
     country = models.CharField(max_length=60)
 
     def __str__(self):
-        return f"{self.name} {self.code}"
+        return f"{self.city} ({self.code})"
 
 
 class Week(models.Model):
     name = models.CharField(max_length=10)
-    week_number = models.IntegerField()
+    number = models.IntegerField()
 
     def __str__(self):
         return f"{self.name}"
@@ -62,20 +63,23 @@ class Flight(models.Model):
 
     airline = models.CharField(max_length=50)
     flight_no = models.CharField(max_length=6)
+    flight_code = models.CharField(max_length=3, default='CO')
     origin = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name="departures")
     destination = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name="arrivals")
     departure_weekday = models.ManyToManyField(Week, related_name="flights_of_the_day")
     arrival_weekday = models.ManyToManyField(Week)
+    seats_available = models.IntegerField(default=220)
     depart_time = models.TimeField(auto_now=False, auto_now_add=False)
     arrival_time = models.TimeField(auto_now=False, auto_now_add=False)
-    is_nonstop = models.BooleanField(default=False)
+    is_nonstop = models.BooleanField(default=True)
     economy_fare = models.FloatField()
     buisness_fare = models.FloatField()
     first_class_fare = models.FloatField()
+    duration = models.DurationField(default=timedelta(hours=1))
 
 
     def __str__(self):
-        return f"{self.origin.code} to {self.destination.code} ({self.flight_number})"
+        return f"{self.origin.code} to {self.destination.code} ({self.flight_no})"
     
 
 class Passenger(models.Model):

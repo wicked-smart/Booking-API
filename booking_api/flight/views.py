@@ -1,20 +1,37 @@
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from flight.serializers import *
 from rest_framework.response import Response
 from rest_framework import status
 from .models import *
 from django.contrib.auth import authenticate, logout, login
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 
-
+from .utils import *
 from django.middleware.csrf import get_token
 
 # Create your views here.
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def initialise(request):
+    
+    try:
+        if len(Week.objects.all()) == 0:
+            createWeekDays()
+        
+        if  len(Airport.objects.all()) == 0:
+            print("Adding airports...")
+            addAirports()
+        
+        if len(Flight.objects.all()) == 0:
+            addDomesticFlights()
+        
+        return Response({"message": "Succesfully Initialised Databases!!"})
 
-def index(request):
-    return HttpResponse("Hello, World!!!!")
+    except:
+        return Response({"message": "Couldn't initilise properly!!!"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def test_index(request, foo):
@@ -77,6 +94,9 @@ def loginn(request):
         else:
             return Response(serializers.errors, status=status.HTTP_404_NOT_FOUND)
      
+
+
+
 
 @api_view(['POST'])
 def logoutt(request):
