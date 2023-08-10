@@ -9,6 +9,7 @@ urlpatterns = [
     path('blog/<slug:slug>', views.blog, name="blog"),
     path('register', views.register, name="register"),
     path('login', views.loginn, name="login"),
+    path('airports', views.airports, name="airports"),
     path('logout', views.logoutt, name="logout")
 ]
 

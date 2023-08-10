@@ -1,4 +1,4 @@
-from .models import User
+from flight.models import User
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from django.core.validators import EmailValidator

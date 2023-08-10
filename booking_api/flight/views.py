@@ -1,13 +1,16 @@
 from django.shortcuts import render
 from django.http import HttpResponse, HttpRequest
 from rest_framework.decorators import api_view, permission_classes
-from flight.serializers import *
+from flight.serializers.AuthSerializers import *
+from flight.serializers.ModelSerializers import *
 from rest_framework.response import Response
 from rest_framework import status
 from .models import *
 from django.contrib.auth import authenticate, logout, login
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from .pagination import CustomPageNumberPagination
+from django.views.decorators.cache import cache_page
 
 from .utils import *
 from django.middleware.csrf import get_token
@@ -94,6 +97,27 @@ def loginn(request):
         else:
             return Response(serializers.errors, status=status.HTTP_404_NOT_FOUND)
      
+
+# airports endpoint
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@cache_page(60* 15)
+def airports(request):
+
+    if request.method == "GET":
+        
+        airports = Airport.objects.all()
+
+        #pagination 
+        paginator = CustomPageNumberPagination()
+        paginated_airports = paginator.paginate_queryset(airports, request)
+
+        serializer = AirportSerializer(paginated_airports, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+    
+  
 
 
 
