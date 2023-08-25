@@ -2,6 +2,7 @@ from .models import *
 from tqdm import tqdm
 from booking_api.settings import BASE_DIR
 from datetime import datetime, timedelta
+import random 
 from random import randrange
 
 # get number of lines
@@ -187,4 +188,13 @@ def addInternationalflights():
 
     print("Done")
     
+
+
+
+#generate random 6-digit  hex token
+def generate_hex_token():
+    token = ''.join(random.choice('0123456789ABCDEF')  for _ in range(6))
+    return token 
+
+
 

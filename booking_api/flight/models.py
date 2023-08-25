@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from datetime import timedelta
+import uuid 
+
 # Create your models here.
 
 
@@ -29,6 +31,20 @@ REFUND_STATUS = (
     ('NO_INITIALISED', 'Not Initialised'),
     ('CREATED', 'Created')   
 )
+
+PAYMENT_STATUS = (
+    ('SUCCEDED', 'Succeded'),
+    ('CANCELED', 'Canceled'),
+    ('FAILED', 'Failed'),
+    ('PROCESSING', 'Processing'),
+    ('NOT_ATTEMPTED', 'Not Attempted') 
+)
+
+SEAT_TYPE = (
+    		('WINDOW', 'Window'),
+    		('AISLE', 'Aisle'),
+    		('MIDDLE', 'Middle')
+    	)
 
 
 class User(AbstractUser):
@@ -86,9 +102,14 @@ class Passenger(models.Model):
 
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    email = models.EmailField()
     gender = models.CharField(choices=GENDER, max_length=10)
     age = models.IntegerField()
+    type = models.CharField(max_length=10, blank=True)
+    unique_id = models.UUIDField(default=uuid.uuid4, editable=False)
+    seat_type = models.CharField(choices=SEAT_TYPE, default='WINDOW', max_length=15)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.unique_id})"
 
 
 
@@ -96,20 +117,21 @@ class Booking(models.Model):
 
     booking_ref = models.CharField(max_length=6)
     payment_ref = models.CharField(max_length=50, blank=True, null=True)
+    payment_status = models.CharField(choices=PAYMENT_STATUS, max_length=15, default="NOT_ATTEMPTED")
     refund_status = models.CharField(max_length=20, choices=REFUND_STATUS, default="NOT_INITIALISED")
     last_updated = models.DateTimeField(auto_now=True)
     booked_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="booked_tickets")
-    booked_at = models.DateTimeField(auto_now=True)
+    booked_at = models.DateTimeField(auto_now_add=True)
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="bookings")
     flight_dep_date = models.DateField()
     flight_arriv_date = models.DateField()
-    mobile_no = models.CharField(max_length=12)
     passengers = models.ManyToManyField(Passenger, related_name="ticket_bookings")
     seat_class = models.CharField(choices=SEAT_CLASS, max_length=15)
-    status = models.CharField(choices=TICKET_STATUS, max_length=15, default="PENDING")
-    flight_fare = models.FloatField()
-    coupon_used = models.CharField(max_length=10, blank=True)
-    coupon_discount = models.FloatField()
+    booking_status = models.CharField(choices=TICKET_STATUS, max_length=15, default="PENDING")
+    coupon_used = models.BooleanField(default=False)
+    coupon_code = models.CharField(max_length=10, blank=True)
+    coupon_discount = models.FloatField(default=0.0)
+    total_fare = models.FloatField(default=0.0)
     
 
     def __str__(self):
@@ -122,4 +144,29 @@ class Layover(models.Model):
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="layovers")
     city = models.CharField(max_length=20)
     duration = models.TimeField()
-    next_flight = models.ForeignKey(Flight, on_delete=models.CASCADE)
+    airport_change = models.BooleanField(default=False)
+    connecting_flight = models.ForeignKey(Flight, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.flight}"
+    
+
+
+    	
+    	
+class Seats(models.Model):
+    
+    seat_type = models.CharField(max_length=10,choices=SEAT_TYPE, blank=True)
+    seat_no = models.CharField(max_length=3, blank=True, null=True)
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="seats")
+    departure_date = models.DateField()
+    passenger = models.ForeignKey(Passenger, on_delete=models.CASCADE, related_name="seats", blank=True, null=True)
+    is_booked = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.seat_no} ({self.seat_type})"
+    
+    class Meta:
+        unique_together = ['flight', 'departure_date', 'seat_no']
+        
+

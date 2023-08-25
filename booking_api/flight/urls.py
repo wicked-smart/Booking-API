@@ -10,6 +10,9 @@ urlpatterns = [
     path('register', views.register, name="register"),
     path('login', views.loginn, name="login"),
     path('airports', views.airports, name="airports"),
+    path('airport/<int:airport_id>', views.airport, name="airport"),
+    path('book_flight/<int:flight_id>', views.book_flight, name="book_flight"),
+    path('flights', views.flights, name="flights"),
     path('logout', views.logoutt, name="logout")
 ]
 
