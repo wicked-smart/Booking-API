@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres
+    volumes:
+    - postgres-data:/var/lib/postgresql/data
+    ports:
+    - "5433:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=prem
+
+  web:
+    build: ./booking_api/
+    volumes:
+    - ./booking_api:/app
+    ports:
+    - "8000:8000"
+    environment:
+    - DB_HOST=db
+    - DB_USER=prem
+    - DB_PASSWORD=postgres
+    - DB_NAME=postgres 
+    command: >
+      sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
+
+    depends_on:
+    - db  
+  
+volumes:
+  postgres-data: 

@@ -236,21 +236,31 @@ def flights(request):
     
                     
                 
-                if seat_class and price:
+                if seat_class and not price:
 
                     if seat_class == 'ECONOMY':
-                        filters['economy_fare__lte'] = price
+                        filters['economy_fare__lte'] = 7000
 
                     elif seat_class == 'BUISNESS':
-                        filters['buisness_fare__lte'] = price
+                        filters['buisness_fare__lte'] = 10000
                     
                     elif  seat_class == 'FIRST_CLASS':
-                        filters['first_class_fare__lte'] = price
+                        filters['first_class_fare__lte'] = 13000
 
-                elif (price and not seat_class) or (seat_class and not price):
-                    return Response({'message': 'seat_class and Price is both mandatory query fields!!!'}, status=status.HTTP_400_BAD_REQUEST)
+                if price and not seat_class:
+                        return Response("seat class must be their with price filter..", status=status.HTTP_400_BAD_REQUEST)
+                
+                elif price and seat_class:
 
+                    if seat_class == 'ECONOMY':
+                            filters['economy_fare__lte'] = price
 
+                    elif seat_class == 'BUISNESS':
+                            filters['buisness_fare__lte'] = price
+                
+                    elif  seat_class == 'FIRST_CLASS':
+                            filters['first_class_fare__lte'] = price
+                
 
 
                 if departure_timing:
