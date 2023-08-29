@@ -23,7 +23,7 @@ SEAT_CLASS = (
 
 TICKET_STATUS = (
     ("PENDING", "Pending"),
-    ("CONFIRMAED", "Confirmed"),
+    ("CONFIRMED", "Confirmed"),
     ("CANCELED", "Canceled")
 )
 
@@ -156,6 +156,7 @@ class Layover(models.Model):
     	
 class Seats(models.Model):
     
+    id = models.BigAutoField(primary_key=True) 
     seat_type = models.CharField(max_length=10,choices=SEAT_TYPE, blank=True)
     seat_no = models.CharField(max_length=3, blank=True, null=True)
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="seats")

@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 import re
 from flight.utils import generate_hex_token
 from datetime import datetime, timedelta
+from django.db import transaction
 
 
 LAYOVER_STOPS = (
@@ -384,10 +385,11 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         seats = Seats.objects.filter(flight=flight, departure_date=depart_date, is_booked=False)
         
         if not seats.exists():
+            seats_to_create = []
             for i in range(1, 31):
                 for seat_col in range(ord('A'), ord('G')):
-                    seat = Seats.objects.create(flight=flight, departure_date=depart_date)
-                    seat.seat_no = f"{i:02d}{chr(seat_col)}"
+                   
+                    seat_no = f"{i:02d}{chr(seat_col)}"
 
                     if chr(seat_col) == 'A' or chr(seat_col) == 'F':
                         seat_type = 'WINDOW'
@@ -396,8 +398,11 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                     elif chr(seat_col) == 'C' or chr(seat_col) == 'D':
                         seat_type = 'AISLE'
                     
-                    seat.seat_type = seat_type
-                    seat.save()
+                    Seats.objects.create(flight=flight, departure_date=depart_date, seat_no=seat_no, seat_type=seat_type)
+                     
+            # Use atomic transaction to speed up the bulk db creation
+            #with transaction.atomic():
+            #    Seats.objects.bulk_create(seats_to_create)
     
 
         # sort seats as per seat_type
@@ -406,6 +411,8 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
         # get passengers and sort by seat_type
         passengers = validated_data.get('passengers')
+
+        no_of_passengers = len(passengers)
         #print("passengers := ", passengers)
         if len(seats) < len(passengers):
             raise ValidationError(f"Only {len(seats)} seats available!! not enough seats for booking all the passengers..")
@@ -454,8 +461,10 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             discount = 750.0
         else:
             discount = 0.0
+
+        print("total_fare from FlightBookingSerializer := ", no_of_passengers *(base_fare + gst) + convenience_fee - discount)
         
-        booking.total_fare = (base_fare + gst + convenience_fee - discount)
+        booking.total_fare = no_of_passengers *(base_fare + gst) + convenience_fee - discount
 
         #save booking object
         booking.save()

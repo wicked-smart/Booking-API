@@ -4,7 +4,7 @@ from django.contrib import admin
 from .models import *
 
 class SeatsAdmin(admin.ModelAdmin):
-    list_display = ['seat_no', 'seat_type', 'departure_date', 'passenger', 'is_booked']
+    list_display = ['flight', 'seat_no', 'seat_type', 'departure_date', 'passenger', 'is_booked']
     
 
     ordering = ['seat_no']  # Order seats by seat_no in ascending order

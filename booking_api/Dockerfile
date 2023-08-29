@@ -30,6 +30,8 @@ RUN apk add --no-cache \
 ## Install libxrender package
 RUN apk add --no-cache libxrender
 
+
+
 # Copy wkhtmltopdf binary from the build stage to the final stage
 COPY --from=wkhtmltopdf /bin/wkhtmltopdf /usr/bin/wkhtmltopdf
 

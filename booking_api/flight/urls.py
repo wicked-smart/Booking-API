@@ -12,6 +12,8 @@ urlpatterns = [
     path('airports', views.airports, name="airports"),
     path('airport/<int:airport_id>', views.airport, name="airport"),
     path('book_flight/<int:flight_id>', views.book_flight, name="book_flight"),
+    path('payments/<str:booking_ref>', views.payments, name="payments"),
+    path('update_booking', views.update_booking, name="update-booking"),
     path('flights', views.flights, name="flights"),
     path('logout', views.logoutt, name="logout")
 ]

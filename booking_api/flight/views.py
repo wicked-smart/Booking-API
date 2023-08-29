@@ -12,9 +12,16 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from .pagination import CustomPageNumberPagination
 from django.views.decorators.cache import cache_page
 from datetime import datetime, time
+import os
+from dotenv import load_dotenv
+import stripe
 
 from .utils import *
+from booking_api.settings import BASE_DIR
 from django.middleware.csrf import get_token
+
+#load .env file
+load_dotenv(BASE_DIR / '.env')
 
 # Create your views here.
 @api_view(["GET"])
@@ -363,6 +370,145 @@ def book_flight(request, flight_id):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# payments endpoint
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def payments(request, booking_ref):
+    try:
+            booking = Booking.objects.get(booking_ref=booking_ref)
+    except Booking.DoesNotExist:
+            return Response("{'message': 'Booking does not exists!'}", status=status.HTTP_404_NOT_FOUND)
+        
+    if request.method == 'GET':
+        pass 
+    
+    elif request.method == 'POST':
+
+        
+        stripe_test_api_key = os.getenv('STRIPE_TEST_API_KEY')
+        if not stripe_test_api_key:
+            return Response("{'message': 'Test API key not loaded from .env'}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if booking.booking_status != 'PENDING':
+            return Response({'message': 'Booking status needs to be in PENDING state for payment to go through!!!'})
+        
+        # total fare 
+        total_fare = int(booking.total_fare)
+
+        if total_fare == 0.0:
+            return Response("{'message': 'amount must be greater than zero!!!'}")
+
+        stripe.api_key = stripe_test_api_key
+        # create stripe PaymentIntent Object, confirm the order with passing booking ref as meta data
+        paymentIntent = stripe.PaymentIntent.create(
+            amount= total_fare * 100,
+            currency='inr',
+             automatic_payment_methods={
+                "enabled": True,
+                "allow_redirects": "never"
+            },
+            payment_method_options={'card':
+						{
+						'request_three_d_secure': 'any'
+						}
+					},
+            metadata = {
+                "booking_ref": booking.booking_ref
+            }
+
+        )
+
+        # retrieve payment_intent_id
+        payment_intent_id = paymentIntent["id"]
+
+        #confirm the paymentIntent
+        confirm = stripe.PaymentIntent.confirm(
+            payment_intent_id,
+            payment_method= "pm_card_visa"
+        )
+
+        # prepare the response 
+        response_return = {
+            "payemnt_intent_id": payment_intent_id,
+            "next_action": "Click on the hook url with this response and ping GET endpoint for payment confirmation ",
+            "url": confirm["next_action"]
+        }
+
+        return Response(response_return, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def update_booking(request):
+    data = request.data
+
+    if data["event"] == "payment":
+
+        if 'webhook_secret' in data and data["webhook_secret"] == os.environ.get('WEBHOOK_SECRET'):
+
+            booking_ref = data.get("booking_ref")
+
+            try:
+                booking = Booking.objects.get(booking_ref=booking_ref)
+            except Booking.DoesNotExist:
+                return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+            if booking.booking_status != 'PENDING':
+                return Response({"message": "Not Allowed!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+            payment_status = data.get("payment_status")
+            payment_id = data.get("payment_id")
+
+            if payment_status is not None:
+                booking.booking_status = 'CONFIRMED'
+                booking.payment_status = 'SUCCEDED'
+
+            if payment_id is not None:
+                booking.payment_ref = payment_id
+
+            booking.save()
+
+            return Response({'message': 'booking successfully updated!'}, status=status.HTTP_200_OK)
+
+        else:
+            return Response({'message': 'Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
+
+    elif data["event"] == "refund":
+
+
+        if 'webhook_secret' in data and data["webhook_secret"] == os.environ.get('WEBHOOK_SECRET'):
+
+            booking_ref = data.get("booking_ref")
+
+            try:
+                booking = Booking.objects.get(booking_ref=booking_ref)
+            except Booking.DoesNotExist:
+                return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+            if booking.booking_status != 'CONFIRMED':
+                return Response({"message": "Not eligible for refund!! "}, status=status.HTTP_404_NOT_FOUND)
+
+
+            refund_status = data.get("refund_status")
+            #payment_id = data.get("payment_id")
+
+            if refund_status is not None:
+                booking.refund_status = refund_status
+                booking.payment_status = 'CANCELED'
+
+            booking.booking_status = 'CANCELED'
+
+            booking.save()
+
+            return Response({'message': 'Refund successfully created!'}, status=status.HTTP_200_OK)
+
+        else:
+            return Response({'message': 'Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
+
+
+
 @api_view(['POST'])
 def logoutt(request):
 
@@ -374,3 +520,6 @@ def logoutt(request):
 
     return Response({"message": "you're already logged out!!!"})
     
+
+
+# pdf generation endpoint 

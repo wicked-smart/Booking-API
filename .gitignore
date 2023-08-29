@@ -3,5 +3,6 @@ lib/
 pyvenv.cfg
 *.pyc
 static/
+.env
 
 *.sqlite3
