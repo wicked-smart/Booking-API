@@ -212,7 +212,9 @@ def flights(request):
                         message = f" {destination_city} city airport does not exists yet in our db...we're still updating our data.."
                         return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
                 
-
+                elif not origin_city and not destination_city:
+                    pass 
+                    
                 else:
                     return Response({'message': 'Both origin and destination fields are important! '}, status=status.HTTP_400_BAD_REQUEST)
 
