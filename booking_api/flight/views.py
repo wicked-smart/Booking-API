@@ -6,6 +6,7 @@ from flight.serializers.ModelSerializers import *
 from rest_framework.response import Response
 from rest_framework import status
 from .models import *
+import time as timemodule
 from django.contrib.auth import authenticate, logout, login
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -22,6 +23,10 @@ from django.middleware.csrf import get_token
 
 #load .env file
 load_dotenv(BASE_DIR / '.env')
+
+#load stripe api keys
+stripe_test_api_key = os.getenv('STRIPE_TEST_API_KEY')
+stripe.api_key = stripe_test_api_key
 
 # Create your views here.
 @api_view(["GET"])
@@ -369,6 +374,80 @@ def book_flight(request, flight_id):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# GET, PUT any particular booking using booking_ref
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def bookings(request, booking_ref):
+
+    try:
+        booking = Booking.objects.get(booking_ref=booking_ref)
+    
+    except Booking.DoesNotExist:
+        return Response({'message': 'Booking Does Not Exsis!'})
+    
+    if request.method == 'GET':
+        serializer = FlightBookingSerializer(booking, context={'request': request, 'flight': booking.flight})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'PUT':
+        data = request.data 
+        serializer = FlightBookingSerializer(booking, data=data,  partial=True, context={'request': request, 'booking': booking})
+
+        print("booking := ", booking)
+        if serializer.is_valid():
+
+            #cancel the ticket
+            booking.booking_status= 'CANCELED'
+
+            try:
+                    total_fare = booking.total_fare
+                    if total_fare == 0.0:
+                        return Response({"message": "Total Fare can't be equal to zero!!!"})
+                    
+                    amount = int(total_fare - 3000) * 100
+                    stripe.Refund.create(
+                        payment_intent=booking.payment_ref,
+                        amount = amount,  # partially refundable
+                        metadata={
+                            "booking_ref": booking_ref
+                        }
+                    )
+
+        
+
+                    max_poll_attempts = 10  # Adjust as needed
+                    poll_interval = 5  # Adjust as needed (seconds)
+                    current_attempt = 0
+                    
+                    while current_attempt < max_poll_attempts:
+                        booking.refresh_from_db()  # Refresh the booking object from the database
+                        if booking.booking_status == 'CANCELED' and booking.refund_status == 'CREATED':
+                            #make sets is_booked=False
+                            passengers = booking.passengers.all()
+
+                            #make the seats available
+                            for passenger in passengers:
+                                seats = Seats.objects.filter(flight=booking.flight, departure_date=booking.flight_dep_date,passenger=passenger, is_booked=True).first()
+                                seats.is_booked= False
+                                seats.passenger = None
+                                seats.save()
+
+                            return Response({'message': "Refund successfully created, will get reflected in your account in 3-4 business days!"}, status=status.HTTP_200_OK)
+                        
+                        # Sleep for a while before the next polling attempt
+                        timemodule.sleep(poll_interval)
+                        current_attempt += 1
+                    
+                    if not (booking.booking_status == 'CANCELED' and booking.refund_status == 'CREATED'):
+        
+                        return Response({'message': "Could not process refund , Try again !!"}, status=status.HTTP_400_BAD_REQUEST)
+
+            except stripe.error.StripeError as e:
+                print("Stripe error:", str(e))
+                return Response({'message': "Could not process refund due to Stripe error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # payments endpoint
 @api_view(['GET', 'POST'])
@@ -385,7 +464,7 @@ def payments(request, booking_ref):
     elif request.method == 'POST':
 
         
-        stripe_test_api_key = os.getenv('STRIPE_TEST_API_KEY')
+        
         if not stripe_test_api_key:
             return Response("{'message': 'Test API key not loaded from .env'}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -398,7 +477,7 @@ def payments(request, booking_ref):
         if total_fare == 0.0:
             return Response("{'message': 'amount must be greater than zero!!!'}")
 
-        stripe.api_key = stripe_test_api_key
+        
         # create stripe PaymentIntent Object, confirm the order with passing booking ref as meta data
         paymentIntent = stripe.PaymentIntent.create(
             amount= total_fare * 100,

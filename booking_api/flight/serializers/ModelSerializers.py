@@ -214,10 +214,34 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             'total_fare': {'required': False}
         }
     
+    def __init__(self, *args, **kwargs):
+        super().__init__( *args, **kwargs)
+
+        request = self.context.get('request', None)
+        if request and request.method == 'PUT':
+            self.fields['seat_class'].allow_null = True
+            self.fields['flight_dep_date'].allow_null = True
+            self.fields['passengers'].allow_null = True
+    
     def validate(self, attrs):
 
         flight = self.context.get('flight')
         request = self.context.get('request')
+
+        if request and request.method == 'PUT':
+            
+            booking = self.context.get('booking')
+
+            if not booking:
+                raise ValidationError("Booking object Not passed to the Serializer !!!")
+
+            if attrs['booking_status'] != 'CANCELED':
+                raise ValidationError("Not Allowed !!")
+            
+            if booking.booking_status == 'CANCELED' or booking.booking_status == 'PENDING':
+                raise ValidationError("Not a Valid Call !!!")
+            
+            return attrs
 
         date_str = attrs['flight_dep_date']
         date_obj = datetime.strptime(date_str, "%d-%m-%Y")
@@ -255,7 +279,9 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         flight = self.context.get('flight')
 
-        if request and request.method == 'POST':
+        print("flight := ", flight)
+
+        if request and ( request.method == 'POST' or request.method == 'GET' ) :
 
             coupon_used = ret.get('coupon_used')
 
@@ -294,6 +320,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                     }
                      
                     seat = Seats.objects.filter(flight=flight, departure_date=depart_obj, passenger=passenger, is_booked=True).first()
+                    print("seat:= ", seat)
                     if not seat:
                         foo['seat'] = "NOT_ALLOCATED"
                     else:
