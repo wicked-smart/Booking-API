@@ -4,5 +4,5 @@ pyvenv.cfg
 *.pyc
 static/
 .env
-
+pdfs/
 *.sqlite3

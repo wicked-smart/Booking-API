@@ -16,6 +16,7 @@ urlpatterns = [
     path('bookings/<str:booking_ref>', views.bookings, name="bookings"),
     path('update_booking', views.update_booking, name="update-booking"),
     path('flights', views.flights, name="flights"),
+    path('test_pdf', views.test_pdf, name="test-pdf"),
     path('logout', views.logoutt, name="logout")
 ]
 

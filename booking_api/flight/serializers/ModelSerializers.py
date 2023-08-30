@@ -491,7 +491,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
         print("total_fare from FlightBookingSerializer := ", no_of_passengers *(base_fare + gst) + convenience_fee - discount)
         
-        booking.total_fare = no_of_passengers *(base_fare + gst) + convenience_fee - discount
+        booking.total_fare = round(no_of_passengers *(base_fare + gst) + convenience_fee - discount)
 
         #save booking object
         booking.save()

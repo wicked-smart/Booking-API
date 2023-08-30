@@ -102,21 +102,24 @@ def webhook():
         print("Event payment_method.attached succeeded....")
     
     elif event['type'] == 'charge.refunded':
-        payment_intent = event['data']['object']  # contains a stripe.PaymentMethod
+        refund_object = event['data']['object']  # contains a stripe.PaymentMethod
         # Then define and call a method to handle the successful attachment of a PaymentMethod.
         # handle_payment_method_attached(payment_method)
         print("Event charge.refund succeeded....")
         
 
-        if "metadata" in payment_intent:
+        if "metadata" in refund_object:
 
-            print(payment_intent["metadata"])
-            booking_ref = payment_intent["metadata"].get('booking_ref')
+            print(refund_object["metadata"])
+            booking_ref = refund_object["metadata"].get('booking_ref')
+            receipt_url = refund_object["receipt_url"]
+            print("reciept url := ", refund_object["receipt_url"])
         
             data = {
                 "booking_ref": booking_ref,
                 "refund_status": "CREATED",
                 "webhook_secret": os.environ.get('WEBHOOK_SECRET'),
+                "receipt_url": receipt_url,
                 "event": "refund"
             }
 

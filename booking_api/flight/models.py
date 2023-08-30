@@ -35,9 +35,10 @@ REFUND_STATUS = (
 PAYMENT_STATUS = (
     ('SUCCEDED', 'Succeded'),
     ('CANCELED', 'Canceled'),
+    ('REFUNDED', 'Refunded'),
     ('FAILED', 'Failed'),
     ('PROCESSING', 'Processing'),
-    ('NOT_ATTEMPTED', 'Not Attempted') 
+    ('NOT_ATTEMPTED', 'Not Attempted')
 )
 
 SEAT_TYPE = (
@@ -119,6 +120,7 @@ class Booking(models.Model):
     payment_ref = models.CharField(max_length=50, blank=True, null=True)
     payment_status = models.CharField(choices=PAYMENT_STATUS, max_length=15, default="NOT_ATTEMPTED")
     refund_status = models.CharField(max_length=20, choices=REFUND_STATUS, default="NOT_INITIALISED")
+    refund_receipt_url = models.URLField(max_length=500, blank=True, null=True, default=None)
     last_updated = models.DateTimeField(auto_now=True)
     booked_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="booked_tickets")
     booked_at = models.DateTimeField(auto_now_add=True)

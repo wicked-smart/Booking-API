@@ -20,6 +20,9 @@ import stripe
 from .utils import *
 from booking_api.settings import BASE_DIR
 from django.middleware.csrf import get_token
+import pdfkit 
+from django.template.loader import get_template
+from django.template import Context
 
 #load .env file
 load_dotenv(BASE_DIR / '.env')
@@ -355,7 +358,7 @@ def flights(request):
 
 
 #book flight
-@api_view(['GET', 'POST'])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def book_flight(request, flight_id):
 
@@ -406,7 +409,7 @@ def bookings(request, booking_ref):
                     if total_fare == 0.0:
                         return Response({"message": "Total Fare can't be equal to zero!!!"})
                     
-                    amount = int(total_fare - 3000) * 100
+                    amount = round(total_fare - 3000) * 100
                     stripe.Refund.create(
                         payment_intent=booking.payment_ref,
                         amount = amount,  # partially refundable
@@ -434,7 +437,21 @@ def bookings(request, booking_ref):
                                 seats.passenger = None
                                 seats.save()
 
-                            return Response({'message': "Refund successfully created, will get reflected in your account in 3-4 business days!"}, status=status.HTTP_200_OK)
+                            # create reciept pdf and send back as response
+                            receipt_url = booking.refund_receipt_url
+                            pdf_options = {
+                                'page-size': 'Letter',
+                                'margin-top': '0.75in',
+                                'margin-right': '0.75in',
+                                'margin-bottom': '0.75in',
+                                'margin-left': '0.75in',
+                            }
+                            pdf = pdfkit.from_url(receipt_url, False, pdf_options)
+                            
+                            response = HttpResponse(pdf, content_type="application/pdf")
+                            response['Content-Disposition'] = 'inline; filename="refund_reciept.pdf"'
+
+                            return response
                         
                         # Sleep for a while before the next polling attempt
                         timemodule.sleep(poll_interval)
@@ -450,6 +467,7 @@ def bookings(request, booking_ref):
 
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 
 # payments endpoint
 @api_view(['GET', 'POST'])
@@ -474,7 +492,7 @@ def payments(request, booking_ref):
             return Response({'message': 'Booking status needs to be in PENDING state for payment to go through!!!'})
         
         # total fare 
-        total_fare = int(booking.total_fare)
+        total_fare = round(booking.total_fare)
 
         if total_fare == 0.0:
             return Response("{'message': 'amount must be greater than zero!!!'}")
@@ -561,6 +579,7 @@ def update_booking(request):
         if 'webhook_secret' in data and data["webhook_secret"] == os.environ.get('WEBHOOK_SECRET'):
 
             booking_ref = data.get("booking_ref")
+            receipt_url = data.get("receipt_url")
 
             try:
                 booking = Booking.objects.get(booking_ref=booking_ref)
@@ -577,7 +596,10 @@ def update_booking(request):
 
             if refund_status is not None:
                 booking.refund_status = refund_status
-                booking.payment_status = 'CANCELED'
+                booking.payment_status = 'REFUNDED'
+
+            if receipt_url is not None:
+                booking.refund_receipt_url = receipt_url
 
             booking.booking_status = 'CANCELED'
 
@@ -604,3 +626,44 @@ def logoutt(request):
 
 
 # pdf generation endpoint 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def test_pdf(request):
+
+    pdf_options = {
+        'page-size': 'Letter',
+        'margin-top': '0.75in',
+        'margin-right': '0.75in',
+        'margin-bottom': '0.75in',
+        'margin-left': '0.75in',
+    }
+
+    #url = "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xTlRQWWhTQmx3TnB1eEIyKPqpvKcGMgYIwlewUVQ6LBYz3XfSXJTk9fkJqr4qqp10M8sWYFHE66zDcvHG5zPO6bhJcfxywawR6FGQ"
+    # Generate the PDF from the URL
+    #pdf_content = pdfkit.from_url(url, False, options=pdf_options)
+
+    template = get_template('flight/ticket.html')
+
+    #context 
+    context = {'message': 'This Message Will Self-destruct in 5 seconds!!'}
+
+    rendered_template = template.render(context)
+    print("rendered_template := ", rendered_template)
+
+    #pdfkit using from string
+    pdf = pdfkit.from_string(rendered_template, False, pdf_options)
+
+    #create a HttpResponse with PDF content
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response['Content-Disposition'] = 'attachment; filename="generated_pdf.pdf"'
+
+    return response
+
+
+
+
+    # Create an HttpResponse with PDF content
+    response = HttpResponse(pdf_content, content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="refund_reciept.pdf"'
+
+    return response
