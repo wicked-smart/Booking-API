@@ -324,7 +324,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         flight = self.context.get('flight')
 
-        print("flight := ", flight)
+        #print("flight := ", flight)
 
         if request and ( request.method == 'POST' or request.method == 'GET' ) :
 
@@ -351,7 +351,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
                 ret.pop('passengers') # pop the passengers
 
-                print("ret after popping passengers := ", ret)
+                #print("ret after popping passengers := ", ret)
                 passengers_list = [] # new passengers list
                 for passenger in passengers:
                     
@@ -367,7 +367,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                     }
                      
                     seat = Seats.objects.filter(flight=flight, departure_date=depart_obj, passenger=passenger, is_booked=True).first()
-                    print("seat:= ", seat)
+                    #print("seat:= ", seat)
                     if not seat:
                         foo['seat'] = "NOT_ALLOCATED"
                     else:

@@ -420,7 +420,30 @@ def bookings(request, booking_ref):
                     if total_fare == 0.0:
                         return Response({"message": "Total Fare can't be equal to zero!!!"})
                     
-                    amount = round(total_fare - 3000) * 100
+                    cancellation_charge = 0
+
+                    #calculate cancellation charge on the basis of time delta between current and booking datetimes
+                    departure_date = booking.flight_dep_date
+                    departure_time = booking.flight.depart_time
+
+                    departure_datetime = datetime.combine(departure_date, departure_time)
+                    
+                    diff =  departure_datetime - datetime.now()
+                    diff_in_hrs = round(diff.total_seconds() / 3600, 2)
+
+                    if diff_in_hrs <= 2:
+                        return Response({"message": "tickets cannot be cancelled less than 2 hours before departure time!!"})
+                    
+                    elif diff_in_hrs > 2 and diff_in_hrs <= 72:
+                        cancellation_charge = 3500
+
+                    elif diff_in_hrs > 72 and diff_in_hrs <= 168:
+                        cancellation_charge = 3000
+                    
+                    elif diff_in_hrs > 168:
+                        cancellation_charge = 0
+
+                    amount = round(total_fare - cancellation_charge) * 100
                     stripe.Refund.create(
                         payment_intent=booking.payment_ref,
                         amount = amount,  # partially refundable
