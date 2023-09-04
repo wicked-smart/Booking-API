@@ -4,9 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('initialise', views.initialise, name='initialise'),
-    re_path('^test-index/(?P<foo>[0-9]{5})/$', views.test_index, name="test-index"),
-    path('blog/<slug:slug>', views.blog, name="blog"),
+    path('health_test', views.health_test, name="health-test"),
     path('register', views.register, name="register"),
     path('login', views.loginn, name="login"),
     path('airports', views.airports, name="airports"),
@@ -16,7 +14,8 @@ urlpatterns = [
     path('bookings/<str:booking_ref>', views.bookings, name="bookings"),
     path('update_booking', views.update_booking, name="update-booking"),
     path('flights', views.flights, name="flights"),
-    path('test_pdf', views.test_pdf, name="test-pdf"),
+    path('flight_details/<int:flight_id>', views.flight_details, name="flight_details"),
+    path('test_pdf/<str:booking_ref>', views.test_pdf, name="test-pdf"),
     path('logout', views.logoutt, name="logout")
 ]
 

@@ -148,7 +148,31 @@ class FlightSerializer(serializers.ModelSerializer):
 
         #flatten dynamic fields
         dynamic_fields = rep.pop('dynamic_fields', {})  # Get the dynamic_fields data and remove it from the dictionary
-        rep.update(dynamic_fields)  
+        rep.update(dynamic_fields)
+
+        request = self.context.get('request')
+        flight_id = self.context.get('flight_id')
+
+
+        if request and flight_id and request.method == 'GET' :
+                #bagagge    information
+            rep["check-in baggage"] = "15kg / person (1 piece only, not exceeding more than 32Kgs per baggage)"
+            rep["hand baggage"]   = "1 hand-bag up to 7 kgs and 115 cms (L+W+H) per customer"
+        
+
+            # extra baggage charges information
+            rep['extra_baggage_charges'] = {
+                "at_airport charges": "Rs. 550 per extra kg",
+                "pre-booking charges": {
+                    "3 kg prepaid": "Rs. 1350",
+                    "5 kg prepaid": "Rs. 2250",
+                    "10 kg prepaid": "Rs. 4500",
+                    "15 kg prepaid": "Rs. 6750",
+                    "20 kg prepaid": "Rs. 9000",
+                    "30 kg prepaid": "Rs. 13500",
+                }
+            }
+                
 
         return rep
 
@@ -190,11 +214,19 @@ class FlightParamSerializer(serializers.Serializer):
 
 class PassengerSerializer(serializers.ModelSerializer):
     seat_type = serializers.ChoiceField(choices=SEAT_TYPE, required=True)
+    hand_baggage = serializers.FloatField(required=False)
+    check_in_baggage = serializers.FloatField(required=False)
 
     class Meta:
         model = Passenger
-        fields = ['first_name', 'last_name', 'gender', 'age', 'type', 'seat_type']
-        
+        fields = ['first_name', 'last_name', 'gender', 'age', 'type', 'seat_type', 'hand_baggage', 'check_in_baggage']
+        extra_kwargs = {
+            "hand_baggage": {"required": False},
+            "check_in_baggage": {"required": False}
+
+        }
+
+
 class FlightBookingSerializer(serializers.ModelSerializer):
 
     passengers = PassengerSerializer(many=True, required=True)
@@ -204,14 +236,17 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Booking
-        fields = ['booking_ref', 'flight', 'payment_status', 'booking_status', 'booked_at' ,'flight_dep_date', 'flight_arriv_date', 'seat_class' , 'passengers', 'coupon_used', 'coupon_code', 'coupon_discount' ,'total_fare']
+        fields = ['booking_ref', 'flight', 'payment_status', 'booking_status', 'booked_at' ,'flight_dep_date', 'flight_arriv_date', 'seat_class' , 'passengers', 'coupon_used','extra_baggage_booking_mode','extra_check_in_baggage', 'extra_baggage_price','coupon_code','coupon_discount' ,'total_fare' ]
         extra_kwargs = {
             'seat_class': {'required': True},
             'flight_dep_date': {'required': True},
             'flight_arriv_date': {'required': False},
             'booking_ref': {'required': False} ,
             'flight': {'required': False} ,
-            'total_fare': {'required': False}
+            'total_fare': {'required': False},
+            'extra_baggage_booking_mode': {'required': True},
+            'extra_baggage_price': {'required': False ,'read_only': True},
+            'extra_check_in_bagagge': {'required': False, 'read_only': True}
         }
     
     def __init__(self, *args, **kwargs):
@@ -222,6 +257,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             self.fields['seat_class'].allow_null = True
             self.fields['flight_dep_date'].allow_null = True
             self.fields['passengers'].allow_null = True
+            self.fields['extra_baggage_booking_mode'].allow_null = True
     
     def validate(self, attrs):
 
@@ -250,6 +286,15 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
         if len(passengers) > 20:
             raise ValidationError("No More Than 20 seats are allowed to be booked in one go!!!!")
+        
+        # validate for hand baggage
+        for passenger in passengers:
+            hand_baggage = passenger.get('hand_baggage')
+            
+            if hand_baggage:
+                if hand_baggage > 7.0:
+                    raise ValidationError("Hand Baggage Per customer cannot be more thaan 7 kgs !! ")
+        
 
         if date_obj < datetime.today():
             raise ValidationError("Invalid Departure date!")
@@ -316,6 +361,8 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                         "gender": passenger.gender,
                         "age": passenger.age,
                         "age_category": passenger.type,
+                        "hand_baggage": passenger.hand_baggage,
+                        "check_in_baggage": passenger.check_in_baggage
                         
                     }
                      
@@ -330,7 +377,8 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                     passengers_list.append(foo)
                 
                 ret['passengers'] = passengers_list
-            
+
+                
             except Booking.DoesNotExist:
                 raise ValidationError(f"Booking with {booking_ref} does not exists!!!")
                 # get appropriate seats using booking_ref ....
@@ -448,11 +496,16 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         passengers.sort(key=lambda passenger: passenger["seat_type"])
 
         #print("passengers after sort := ", passengers)
+        #extra check_in cost calculaion
 
+        extra_check_in_baggage = 0.0
 
         # book seats 
         for passenger in passengers:
             preference = passenger.get('seat_type')
+
+            if passenger['check_in_baggage'] >= 15:
+                extra_check_in_baggage += (passenger['check_in_baggage']-15.0) 
             #print("passenger after popping seat_type := ", passenger)
             
 
@@ -466,7 +519,12 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             seats = list(seats)
             seats.sort(key=lambda seat: seat.seat_type)
 
-            
+        #validate extra_check_in baggage
+        if extra_check_in_baggage > 30:
+            raise ValidationError("Extra check-in baggage can't be greater then 30 kgs")
+    
+        booking.extra_check_in_baggage = extra_check_in_baggage
+
         # Add total fare (base fare, GST, Discount coupon, Convenience Fee))
         if seat_class == 'ECONOMY':
             base_fare = flight.economy_fare
@@ -489,9 +547,57 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         else:
             discount = 0.0
 
-        print("total_fare from FlightBookingSerializer := ", no_of_passengers *(base_fare + gst) + convenience_fee - discount)
+        cute_charge = 50.00
+        rcs_provision  = 50.00
+        aviation_security_fee = 236.00
+        passenger_service_fee = 91.00
+        user_developement_fee = 61.00
+
+
+        # extra baggage cost calculation
+        extra_baggage_booking_mode = validated_data.get("extra_baggage_booking_mode")
         
-        booking.total_fare = round(no_of_passengers *(base_fare + gst) + convenience_fee - discount)
+        # add extra check in baggage booking mode INFO to the booking
+        booking.extra_baggage_booking_mode = extra_baggage_booking_mode
+
+        extra_check_in_baggage_price = 0.0
+
+        if extra_baggage_booking_mode == 'AT_AIRPORT':
+            extra_check_in_baggage_price = extra_check_in_baggage * 550
+
+        elif extra_baggage_booking_mode == 'PRE_BOOKING':
+            
+            if extra_check_in_baggage <= 3:
+                extra_check_in_baggage_price = 1350    
+            
+            elif extra_check_in_baggage > 3 and extra_check_in_baggage <= 5:
+                extra_check_in_baggage_price = 2250    
+            
+            elif extra_check_in_baggage > 5 and  extra_check_in_baggage <= 10:
+                extra_check_in_baggage_price = 4500    
+            
+            elif extra_check_in_baggage >10  and extra_check_in_baggage <= 15:
+                extra_check_in_baggage_price = 6700    
+            
+            elif extra_check_in_baggage > 15 and extra_check_in_baggage <= 20:
+                extra_check_in_baggage_price = 9000   
+
+            elif extra_check_in_baggage > 20 and extra_check_in_baggage <= 30:
+                extra_check_in_baggage_price = 13500     
+        
+
+        #print("total_fare from FlightBookingSerializer := ", no_of_passengers *(base_fare + gst) + convenience_fee - discount)
+        booking.extra_baggage_price = extra_check_in_baggage_price
+
+        booking.total_fare = round(no_of_passengers *(base_fare + gst) 
+                                  + convenience_fee
+                                  + cute_charge
+                                  + rcs_provision
+                                  + aviation_security_fee
+                                  + passenger_service_fee
+                                  + user_developement_fee 
+                                  + extra_check_in_baggage_price
+                                  - discount)
 
         #save booking object
         booking.save()

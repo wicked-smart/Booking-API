@@ -47,6 +47,11 @@ SEAT_TYPE = (
     		('MIDDLE', 'Middle')
     	)
 
+EXTRA_BAGGAGE_BOOKING_MODE = (
+    ('PRE-BOOKING', 'Pre_booking'),
+    ('AT_AIRPORT', 'At_Airport')
+)
+
 
 class User(AbstractUser):
 
@@ -108,7 +113,9 @@ class Passenger(models.Model):
     type = models.CharField(max_length=10, blank=True)
     unique_id = models.UUIDField(default=uuid.uuid4, editable=False)
     seat_type = models.CharField(choices=SEAT_TYPE, default='WINDOW', max_length=15)
-
+    hand_baggage = models.FloatField(default=0.0)
+    check_in_baggage = models.FloatField(default=0.0)
+    
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.unique_id})"
 
@@ -134,6 +141,10 @@ class Booking(models.Model):
     coupon_code = models.CharField(max_length=10, blank=True)
     coupon_discount = models.FloatField(default=0.0)
     total_fare = models.FloatField(default=0.0)
+    extra_baggage_booking_mode = models.CharField(choices=EXTRA_BAGGAGE_BOOKING_MODE, blank=True, null=True)
+    extra_baggage_price = models.FloatField(default=0.0)
+    extra_check_in_baggage = models.FloatField(default=0.0)
+
     
 
     def __str__(self):

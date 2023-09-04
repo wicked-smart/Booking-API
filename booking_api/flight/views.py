@@ -52,15 +52,10 @@ def initialise(request):
     except:
         return Response({"message": "Couldn't initilise properly!!!"}, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+def health_test(request):
+    return render(request, "flight/ticket.html")
 
-def test_index(request, foo):
-    response_str= "You Just Enterd This Value := " + str(foo)
-    return HttpResponse(response_str)
-
-
-def blog(request, slug):
-    response_str= "Your Slug is := " + slug
-    return HttpResponse(response_str)
 
 @api_view(['POST'])
 def register(request):
@@ -357,6 +352,22 @@ def flights(request):
             return paginator.get_paginated_response(serializer.data)
 
 
+# flight GET, PUT , DELETE
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def flight_details(request, flight_id):
+
+    try:
+        flight = Flight.objects.get(id=flight_id)
+    
+    except Flight.DoesNotExist:
+        return Response({'message': f"Flight with id {flight_id} Does not exists!!"})
+    
+    if request.method == 'GET':
+        serializer = FlightSerializer(flight, context={'request': request, 'flight_id': flight_id})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
 #book flight
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -470,18 +481,16 @@ def bookings(request, booking_ref):
     
 
 # payments endpoint
-@api_view(['GET', 'POST'])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def payments(request, booking_ref):
     try:
             booking = Booking.objects.get(booking_ref=booking_ref)
     except Booking.DoesNotExist:
             return Response("{'message': 'Booking does not exists!'}", status=status.HTTP_404_NOT_FOUND)
-        
-    if request.method == 'GET':
-        pass 
+         
     
-    elif request.method == 'POST':
+    if request.method == 'POST':
 
         
         
@@ -628,8 +637,14 @@ def logoutt(request):
 # pdf generation endpoint 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def test_pdf(request):
+def test_pdf(request, booking_ref):
 
+    try:
+        booking = Booking.objects.get(booking_ref=booking_ref)
+    
+    except Booking.DoesNotExist:
+        return Response({'message': f"Booking with reference {booking_ref} does not exists! "}, status=status.HTTP_400_BAD_REQUEST)
+    
     pdf_options = {
         'page-size': 'Letter',
         'margin-top': '0.75in',
@@ -645,7 +660,7 @@ def test_pdf(request):
     template = get_template('flight/ticket.html')
 
     #context 
-    context = {'message': 'This Message Will Self-destruct in 5 seconds!!'}
+    context = {"booking": booking}
 
     rendered_template = template.render(context)
     print("rendered_template := ", rendered_template)

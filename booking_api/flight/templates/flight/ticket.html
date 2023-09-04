@@ -1,12 +1,212 @@
 <html>
     <head>
-        <title>ticket template</title>
-    </head>
+        <title>
+            Ticket Test!
+        </title>
+        <style>
+            .foobar table, tr{
+                padding: 5px;
+            }
 
+            .foobar td{
+                padding: 5px;
+                max-width: 70px;
+                
+            }
+
+            .fareandbaggage {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-evenly;
+            }
+
+            .baggage{
+                margin-top: 20px;
+            }
+            
+        </style>
+    </head>
     <body>
-        <h1 style="color: red"> Testing pdf generation from a html file using pdfkit!!!</h1>
-        <h2>{{ message }}</h2>
+        <h1>Flight ticket {{ booking.flight }} ({{ booking.seat_class }})</h1>
+        <hr style="height: 6px; color: black">
+        <h2>Flight INFO</h2>
+
+        <table class="foobar">
+            <thead>
+                <tr>
+                    <th>Departure </th>
+                    <th>Arrival </th>
+                    <th>From </th>
+                    <th>To </th>
+                    <th>Airline </th>
+                    <th>Flight No. </th>
+                    <th>PNR No. </th>
+                </tr>
+                <tr>
+                    <th colspan="8"><hr></th>
+                </tr>
+                
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ booking.flight_dep_date }} {{ booking.flight.depart_time }} </td>
+                    <td>{{ booking.flight_arriv_date }} {{ booking.flight.arrival_time }}</td>
+                    <td>{{ booking.flight.origin.city }} </td>
+                    <td>{{ booking.flight.destination.city }} </td>
+                    <td>Spice Jet </td>
+                    <td>SG8702 </td>
+                    <td>7FGSRTW334 </td>
+                </tr>
+            </tbody>
+
+        </table>
+        <br>
+        <div class="horizontal">
+            <h3>2h 35min | Chhatrapati Shivaji Airport, BOM - Indira Gandhi Airport, DEL </h3>   
+        </div>
+
+        <h1>Passenger Info</h1>
+
+        <table class="foobar">
+            <thead>
+                <tr>
+                    <th>Passenger's Name</th>
+                    <th>Gender</th>
+                    <th>Age</th>
+                    <th>status</th>
+                    <th>Seat No.</th>
+                    
+                </tr>
+                <tr>
+                    <th colspan="6"><hr/></th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>1. Mr Prem Kumar </td>
+                    <td>Male </td>
+                    <td>28 </td>
+                    <td>Confirmed </td>
+                    <td>027A</td>
+
+                </tr>
+                <tr>
+                    <td>2. Mr Prem Kumar </td>
+                    <td>Male </td>
+                    <td>28 </td>
+                    <td>Confirmed </td>
+                    <td>027A</td>
+
+                </tr>
+                <tr>
+                    <td>3. Mr Prem Kumar </td>
+                    <td>Male </td>
+                    <td>28 </td>
+                    <td>Confirmed </td>
+                    <td>027A</td>
+
+                </tr>
+            </tbody>
+        </table>
+
+        <h1>Fare Rules and Charges </h1>
+        <hr style="height: 3px;">
+
+        <div class="fareandbaggage">
+
+            <div class="fare">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>Base Charge and Airplane Fuel Charge </td>
+                            
+                        </tr>
+                        <tr>
+                            <br/>
+                        </tr>
+                    
+                        <tr>
+                            <td style="padding-left: 20px;"> Adult (3x Rs. 2,344 )</td>
+                            <td> Rs. 4,355 </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-left: 20px;"> child (1x Rs. 2,344 )</td>
+                            <td> Rs. 2,344 </td>
+                        </tr>
+        
+                        <tr>
+                            <td colspan="4"> <hr/></td>
+                        </tr>
+        
+                        <tr>
+                            <td>Taxes and Fees</td>
+                        </tr>
+                        <tr >
+                            <td style="padding-left: 20px;">Cute Charge </td>
+                            <td>Rs. 50.00</td>
+                        </tr>
+                        <tr >
+                            <td style="padding-left: 20px;">RCS Provision </td>
+                            <td>Rs. 50.00</td>
+                        </tr>
+                        <tr >
+                            <td style="padding-left: 20px;">Aviation Security Fee </td>
+                            <td>Rs. 236.00</td>
+                        </tr>
+                        <tr >
+                            <td style="padding-left: 20px;">Passenger Service Fee </td>
+                            <td>Rs. 91.00</td>
+                        </tr>
+                        <tr >
+                            <td style="padding-left: 20px;">User Developement Fee </td>
+                            <td>Rs. 61.00</td>
+                        </tr>
+                        <tr >
+                            <td style="padding-left: 20px;">Convenience Fee </td>
+                            <td>Rs. 300.00</td>
+                        </tr>
+                        <tr >
+                            <td style="padding-left: 20px;">GST @ 5% on Base Fare </td>
+                            <td>Rs. 765.00</td>
+                        </tr>
+                        
+        
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="baggage">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td style="padding-bottom: 20px;">Baggage Details</td>
+                        </tr>
+                        
+                        <tr>
+                            <td>Baggage type</td>
+                            <td>Check-in baggage</td>
+                            <td>Hand Baggage</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4">
+                                <hr>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Adult</td>
+                            <td>25 Kgs</td>
+                            <td>7 Kgs</td>
+                        </tr>
+                    
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+
+
 
     </body>
-
 </html>
