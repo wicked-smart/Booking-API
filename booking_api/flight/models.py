@@ -103,6 +103,9 @@ class Flight(models.Model):
     def __str__(self):
         return f"{self.origin.code} to {self.destination.code} ({self.flight_no})"
     
+    
+
+    
 
 class Passenger(models.Model):
 
@@ -113,13 +116,14 @@ class Passenger(models.Model):
     type = models.CharField(max_length=10, blank=True)
     unique_id = models.UUIDField(default=uuid.uuid4, editable=False)
     seat_type = models.CharField(choices=SEAT_TYPE, default='WINDOW', max_length=15)
+    seat_no = models.CharField(max_length=3, default='00A')
     hand_baggage = models.FloatField(default=0.0)
     check_in_baggage = models.FloatField(default=0.0)
     
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.unique_id})"
 
-
+    
 
 class Booking(models.Model):
 

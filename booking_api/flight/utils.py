@@ -198,3 +198,20 @@ def generate_hex_token():
 
 
 
+# format duration from TimeDelta to 'Xh XXmins' format
+def format_duration(duration):
+        hours, seconds = divmod(duration.total_seconds(), 3600)
+        minutes, seconds = divmod(seconds, 60)
+
+        formatted_duration = ""
+        
+        if hours > 0:
+            formatted_duration += f"{int(hours)}h "
+        
+        if minutes > 0:
+            formatted_duration += f"{int(minutes)} mins"
+
+        if not formatted_duration:
+            formatted_duration = "0 mins"
+
+        return formatted_duration

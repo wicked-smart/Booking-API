@@ -397,6 +397,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                 new_passenger = Passenger.objects.create(**passenger)
                 #print("new_passenger := " , new_passenger)
                 new_passenger.unique_id = uuid.uuid4()
+                new_passenger.seat_no = seat.seat_no
                 new_passenger.save()
 
                 # add passenger to the booking list 
@@ -500,9 +501,18 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
         extra_check_in_baggage = 0.0
 
+        #adult and children count
+        non_infants=0
+        infants=0
+
         # book seats 
         for passenger in passengers:
             preference = passenger.get('seat_type')
+
+            if passenger['type'] == "Adult" or passenger['type'] == 'Child':
+                non_infants+=1
+            elif passenger['type'] == 'Infant':
+                infants+=1
 
             if passenger['check_in_baggage'] >= 15:
                 extra_check_in_baggage += (passenger['check_in_baggage']-15.0) 
@@ -524,6 +534,9 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             raise ValidationError("Extra check-in baggage can't be greater then 30 kgs")
     
         booking.extra_check_in_baggage = extra_check_in_baggage
+
+        
+        
 
         # Add total fare (base fare, GST, Discount coupon, Convenience Fee))
         if seat_class == 'ECONOMY':
@@ -589,7 +602,8 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         #print("total_fare from FlightBookingSerializer := ", no_of_passengers *(base_fare + gst) + convenience_fee - discount)
         booking.extra_baggage_price = extra_check_in_baggage_price
 
-        booking.total_fare = round(no_of_passengers *(base_fare + gst) 
+        booking.total_fare = round(non_infants *(base_fare + gst) 
+                                  + infants*(550+ 0.05*550)
                                   + convenience_fee
                                   + cute_charge
                                   + rcs_provision

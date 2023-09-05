@@ -54,7 +54,47 @@ def initialise(request):
 
 @api_view(['GET'])
 def health_test(request):
-    return render(request, "flight/ticket.html")
+    booking = Booking.objects.get(booking_ref='AE0DD0')
+    duration = format_duration(booking.flight.duration)
+    #print("duration := ", duration)
+
+    #passengers age group count
+    passengers = booking.passengers.all()
+
+    adults=0
+    children=0
+    infants=0
+
+    for passenger in passengers:
+        if passenger.type == 'Adult':
+            adults+=1
+        elif passenger.type == 'Child':
+            children+=1
+        elif passenger.type == 'Infant':
+            infants+=1
+    
+    age_group_count = {
+        'adults': adults,
+        'children': children,
+        'infants': infants
+    }
+
+    # calculating ticket price
+    seat_class = booking.seat_class
+
+    if seat_class == 'ECONOMY':
+        ticket_price = booking.flight.economy_fare
+    elif seat_class == 'BUISNESS':
+        ticket_price = booking.flight.buisness_fare
+    elif seat_class == 'FIRST_CLASS':
+        ticket_price = booking.flight.first_class_fare
+
+    return render(request, "flight/ticket.html", {
+        'booking': booking,
+        "duration": duration,
+        "age_group_count": age_group_count,
+        "ticket_price": ticket_price
+    })
 
 
 @api_view(['POST'])
@@ -663,7 +703,7 @@ def logoutt(request):
 def test_pdf(request, booking_ref):
 
     try:
-        booking = Booking.objects.get(booking_ref=booking_ref)
+        booking = Booking.objects.get(booking_ref='82A89F')
     
     except Booking.DoesNotExist:
         return Response({'message': f"Booking with reference {booking_ref} does not exists! "}, status=status.HTTP_400_BAD_REQUEST)

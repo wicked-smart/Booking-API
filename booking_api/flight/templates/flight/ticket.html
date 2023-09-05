@@ -1,3 +1,7 @@
+{% load custom_tag %}
+{% load humanize %}
+
+
 <html>
     <head>
         <title>
@@ -28,7 +32,9 @@
     </head>
     <body>
         <h1>Flight ticket {{ booking.flight }} ({{ booking.seat_class }})</h1>
+        
         <hr style="height: 6px; color: black">
+        <br>    
         <h2>Flight INFO</h2>
 
         <table class="foobar">
@@ -53,19 +59,20 @@
                     <td>{{ booking.flight_arriv_date }} {{ booking.flight.arrival_time }}</td>
                     <td>{{ booking.flight.origin.city }} </td>
                     <td>{{ booking.flight.destination.city }} </td>
-                    <td>Spice Jet </td>
-                    <td>SG8702 </td>
-                    <td>7FGSRTW334 </td>
+                    <td>{{ booking.flight.airline }} </td>
+                    <td>{{ booking.flight.flight_no }} </td>
+                    <td>{{ booking.booking_ref }} </td>
                 </tr>
             </tbody>
 
         </table>
         <br>
         <div class="horizontal">
-            <h3>2h 35min | Chhatrapati Shivaji Airport, BOM - Indira Gandhi Airport, DEL </h3>   
+            <h3>{{duration}} {{ booking.flight.duration.formatted_duration  }} | {{ booking.flight.origin.name }}, {{ booking.flight.origin.code }} - {{ booking.flight.destination.name }}, {{ booking.flight.destination.code }} </h3>   
         </div>
 
-        <h1>Passenger Info</h1>
+        <br>
+        <h2>Passenger Info</h2>
 
         <table class="foobar">
             <thead>
@@ -73,7 +80,7 @@
                     <th>Passenger's Name</th>
                     <th>Gender</th>
                     <th>Age</th>
-                    <th>status</th>
+                    <th>Status</th>
                     <th>Seat No.</th>
                     
                 </tr>
@@ -84,39 +91,23 @@
             </thead>
 
             <tbody>
+                {% for passenger in booking.passengers.all %}
                 <tr>
-                    <td>1. Mr Prem Kumar </td>
-                    <td>Male </td>
-                    <td>28 </td>
-                    <td>Confirmed </td>
-                    <td>027A</td>
+                    <td>{{ forloop.counter }} {{ passenger.first_name }} {{ passenger.last_name }} </td>
+                    <td>{{ passenger.gender }} </td>
+                    <td>{{ passenger.age }} </td>
+                    <td>{{ booking.booking_status}} </td>
+                    <td style="padding-left: 20px;">{{ passenger.seat_no}}</td>
 
                 </tr>
-                <tr>
-                    <td>2. Mr Prem Kumar </td>
-                    <td>Male </td>
-                    <td>28 </td>
-                    <td>Confirmed </td>
-                    <td>027A</td>
-
-                </tr>
-                <tr>
-                    <td>3. Mr Prem Kumar </td>
-                    <td>Male </td>
-                    <td>28 </td>
-                    <td>Confirmed </td>
-                    <td>027A</td>
-
-                </tr>
+                {% endfor %}
             </tbody>
         </table>
 
-        <h1>Fare Rules and Charges </h1>
+        
+        <h2>Fare Rules and Charges </h2>
         <hr style="height: 3px;">
 
-        <div class="fareandbaggage">
-
-            <div class="fare">
                 <table>
                     <tbody>
                         <tr>
@@ -126,15 +117,33 @@
                         <tr>
                             <br/>
                         </tr>
-                    
-                        <tr>
-                            <td style="padding-left: 20px;"> Adult (3x Rs. 2,344 )</td>
-                            <td> Rs. 4,355 </td>
-                        </tr>
-                        <tr>
-                            <td style="padding-left: 20px;"> child (1x Rs. 2,344 )</td>
-                            <td> Rs. 2,344 </td>
-                        </tr>
+                        
+                        {% if age_group_count.adults != 0 %}
+                            {% with adults=age_group_count.adults  ticket_price=ticket_price %}
+                            <tr> 
+                                <td style="padding-left: 20px;"> Adults ({{ adults }}x Rs. {{ticket_price|intcomma}} )</td>
+                                <td> Rs. {{ ticket_price|multiply:adults|intcomma }} </td>
+                            </tr>
+                            {% endwith %}
+                        {% endif %}
+
+                        {% if age_group_count.children != 0 %}
+                            {% with children=age_group_count.children  ticket_price=ticket_price %}
+                            <tr>
+                                <td style="padding-left: 20px;"> Children ({{ children }}x Rs. {{ticket_price|intcomma}} )</td>
+                                <td> Rs. {{ ticket_price|multiply:children|intcomma }} </td>
+                            </tr>
+                            {% endwith %}
+                        {% endif %}
+
+                        {% if age_group_count.infants != 0 %}
+                            {% with infants=age_group_count.adults  ticket_price=ticket_price %}
+                            <tr>
+                                <td style="padding-left: 20px;"> Infants ({{ infants }}x Rs. {{550|intcomma}} )</td>
+                                <td> Rs. {{ ticket_price|multiply:children|intcomma }} </td>
+                            </tr>
+                            {% endwith %}
+                        {% endif %}
         
                         <tr>
                             <td colspan="4"> <hr/></td>
@@ -167,43 +176,59 @@
                             <td style="padding-left: 20px;">Convenience Fee </td>
                             <td>Rs. 300.00</td>
                         </tr>
-                        <tr >
-                            <td style="padding-left: 20px;">GST @ 5% on Base Fare </td>
-                            <td>Rs. 765.00</td>
-                        </tr>
                         
+                        {% with adults=age_group_count.adults children=age_group_count.children infants=age_group_count.infants %}
+                            {% if booking.seat_class == 'ECONOMY' %}
+                                {% calculate_gst_total adults children infants ticket_price 0.05 as gst_total %}
+                                <tr>
+                                    <td style="padding-left: 20px;">GST @ 5% on Total Base Fare </td>
+                                    <td>Rs. {{ gst_total|floatformat:"2"|intcomma }}</td>
+                                </tr>
+                            {% elif booking.seat_class == 'BUISNESS' or booking.seat_class == 'FIRST_CLASS' %}
+                                {% calculate_gst_total adults children infants ticket_price 0.12 as gst_total %}
+                                <tr>
+                                    <td style="padding-left: 20px;">GST @ 12% on Total Base Fare </td>
+                                    <td>Rs. {{ gst_total|floatformat:"2"|intcomma }}</td>
+                                </tr>
+                            {% endif %}
+                         {% endwith %}
+
+
+                    {% if booking.extra_check_in_baggage != 0.0 %}
+                        <tr>
+                            <td colspan="4"><hr/></td>    
+                        </tr>
+                        <tr>
+                            <td>
+                                Extra baggage charges
+                            </td>
+                            
+                        </tr>
+
+                        <tr>
+                            {% if booking.extra_baggage_booking_mode  == 'AT_AIRPORT' %}
+                                <td style="padding-left: 20px">Extra baggage price ( @550.0/Kg)</td>
+                                <td>Rs. {{ booking.extra_baggage_price|intcomma }}  </td>
+
+                            {% elif booking.extra_baggage_booking_mode  == 'PRE_BOOKING' %}
+                                <td style="padding-left: 20px">Extra baggage price </td>
+                                <td>Rs. {{ booking.extra_baggage_price|intcomma }}</td>
+                            
+                            {% endif %}
+                        </tr>
+                    {% endif %}
+                    
+                    <tr>
+                        <td><br/></td>
+                    </tr>
+                    <tr>
+                        <td>Grand total </td>
+                        <td>Rs. {{ booking.total_fare|intcomma }}</td>
+                    </tr>
         
                     </tbody>
                 </table>
-            </div>
-
-            <div class="baggage">
-                <table>
-                    <tbody>
-                        <tr>
-                            <td style="padding-bottom: 20px;">Baggage Details</td>
-                        </tr>
-                        
-                        <tr>
-                            <td>Baggage type</td>
-                            <td>Check-in baggage</td>
-                            <td>Hand Baggage</td>
-                        </tr>
-                        <tr>
-                            <td colspan="4">
-                                <hr>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Adult</td>
-                            <td>25 Kgs</td>
-                            <td>7 Kgs</td>
-                        </tr>
-                    
-                    </tbody>
-                </table>
-            </div>
-        </div>
+           
         
 
 
