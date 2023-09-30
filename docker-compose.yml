@@ -27,18 +27,29 @@ services:
     depends_on:
     - db  
   
-  #webhook:
-  #  build: 
-  #    context: ./webhook
-  #    dockerfile: Dockerfile
-  #  environment:
-  #   - FLASK_APP=webhook.py 
-  #   - FLASK_ENV=development
-  #   - STRIPE_WEBHOOK_SECRET=whsec_KhG1qA8cTG9kdNYZjaj7nr0IVUuC0xFy
-  # ports:
-  #   - "5000:5000"
-  #  depends_on:
-  #   - web
+  webhook:
+    build: 
+      context: ./webhook
+      dockerfile: Dockerfile
+    environment:
+     - FLASK_APP=webhook.py 
+     - FLASK_ENV=development
+     - STRIPE_WEBHOOK_SECRET=whsec_KhG1qA8cTG9kdNYZjaj7nr0IVUuC0xFy
+    ports:
+     - "5000:5000"
+    depends_on:
+     - web
+
+  ngrok-flask:
+    image: wernight/ngrok
+    ports:
+      - "4040:4040"  # Ngrok web interface port
+    environment:
+      - NGROK_AUTHTOKEN='r3wDdpmLoPXFL8HTU91_5SFcWY8GsdWgaQBHJnPNW'
+    command: ["ngrok", "http", "webhook:5000"]
+    depends_on:
+      - webhook
+
 
 volumes:
   postgres-data: 

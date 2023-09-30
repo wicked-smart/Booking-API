@@ -18,34 +18,103 @@
                 
             }
 
-            .fareandbaggage {
-                display: flex;
-                flex-direction: row;
-                justify-content: space-evenly;
+            hr{
+                height: 1px; 
+                border: 0; 
+                background-color: grey;
+                
             }
 
-            .baggage{
-                margin-top: 20px;
-            }
+          
+            
+
+            
+        
+            nav{
+            
+            margin-bottom: 10px;
+        }
+        .logo{
+            display: flex;
+        }
+        .header{
+            text-align: right;
+            font-size: 2em;
+            font-weight: 600;
+        }
+        li{
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        
+
+            
             
         </style>
     </head>
     <body>
-        <h1>Flight ticket {{ booking.flight }} ({{ booking.seat_class }})</h1>
+
+        <nav>
+            <div  style="width: 100%; display: inline;">  
+                <span style="color: rgb(225, 35, 35); font-weight: bold; font-size: 2.5em;">FLIGHT</span>
+            </div>
+            <div  style="width: 50%; display: inline;">
+                <span style="font-size:30px;font-weight: bold; float : right;">E-Ticket</span>
+            </div>
+        </nav>
+
+        <hr style="height: 1px; border: 0; background-color: grey;" noshade>
+
+        <h1>Ticket Information</h1>
         
-        <hr style="height: 6px; color: black">
-        <br>    
+        
+        <table  class="ticket" cellspacing="0">
+            
+            <tbody>
+                <tr>
+                    <th style="text-align: left">Booking Ref</th>
+                    <td style="padding-left: 10px;">{{ booking.booking_ref }}</td>
+                    <th style="padding-left: 40px; max-width: 100px; text-align: left;">Booking Date and Time </th>
+                    <td style="white-space: nowrap;">{{ booking.booked_at }}</td>
+                </tr>
+                <tr style="height: 10px;"></tr>
+                <tr>
+                    <th style="text-align: left">Flight Date</th>
+                    <td>{{ booking.flight_dep_date }}</td>
+                    <th style="padding-left: 40px; max-width: 100px; text-align: left;">Class </th>
+                    <td>{{ booking.seat_class }}</td>
+                </tr>
+                <tr style="height: 10px;"></tr>
+                <tr>
+                    <th style="text-align: left">Email</th>
+                    <td>{{ booking.booked_by.email }}</td>
+                    <th style="padding-left: 40px; max-width: 100px; text-align: left;">Mobile </th>
+                    <td>{{ booking.booked_by.mobile_no }}</td>
+                </tr>
+                <tr style="height: 10px;"></tr>
+                <tr>
+                    <th style="text-align: left">Status</th>
+                    <td>{{ booking.booking_status }}</td>
+            
+                </tr>
+                
+            </tbody>
+        </table>
+        
+        
+        <br>  
+         
         <h2>Flight INFO</h2>
 
-        <table class="foobar">
+        <table class="foobar" cellspacing="0">
             <thead>
                 <tr>
                     <th>Departure </th>
                     <th>Arrival </th>
                     <th>From </th>
-                    <th>To </th>
-                    <th>Airline </th>
-                    <th>Flight No. </th>
+                    <th style="padding-right: 20px;">To </th>
+                    <th style="padding-right: 20px;">Airline </th>
+                    <th style="padding-right: 20px;">Flight No. </th>
                     <th>PNR No. </th>
                 </tr>
                 <tr>
@@ -56,9 +125,9 @@
             <tbody>
                 <tr>
                     <td>{{ booking.flight_dep_date }} {{ booking.flight.depart_time }} </td>
-                    <td>{{ booking.flight_arriv_date }} {{ booking.flight.arrival_time }}</td>
-                    <td>{{ booking.flight.origin.city }} </td>
-                    <td>{{ booking.flight.destination.city }} </td>
+                    <td style="padding-right: 20px;">{{ booking.flight_arriv_date }} {{ booking.flight.arrival_time }}</td>
+                    <td style="padding-right: 20px;">{{ booking.flight.origin.city }} </td>
+                    <td style="padding-right: 20px;">{{ booking.flight.destination.city }} </td>
                     <td>{{ booking.flight.airline }} </td>
                     <td>{{ booking.flight.flight_no }} </td>
                     <td>{{ booking.booking_ref }} </td>
@@ -72,16 +141,17 @@
         </div>
 
         <br>
+        <br>
         <h2>Passenger Info</h2>
 
-        <table class="foobar">
+        <table class="foobar" cellspacing="0">
             <thead>
                 <tr>
                     <th>Passenger's Name</th>
-                    <th>Gender</th>
-                    <th>Age</th>
-                    <th>Status</th>
-                    <th>Seat No.</th>
+                    <th style="padding-left: 20px;">Gender</th>
+                    <th style="padding-left: 20px;">Age</th>
+                    <th style="padding-left: 20px;">Status</th>
+                    <th style="padding-left: 20px;">Seat No.</th>
                     
                 </tr>
                 <tr>
@@ -93,22 +163,58 @@
             <tbody>
                 {% for passenger in booking.passengers.all %}
                 <tr>
-                    <td>{{ forloop.counter }} {{ passenger.first_name }} {{ passenger.last_name }} </td>
-                    <td>{{ passenger.gender }} </td>
-                    <td>{{ passenger.age }} </td>
-                    <td>{{ booking.booking_status}} </td>
-                    <td style="padding-left: 20px;">{{ passenger.seat_no}}</td>
+                    <td>{{ forloop.counter }}. {{ passenger.first_name }} {{ passenger.last_name }} </td>
+                    <td style="text-align: center;">{{ passenger.gender }} </td>
+                    <td style="text-align: center;">{{ passenger.age }} </td>
+                    <td style="text-align: center;">{{ booking.booking_status}} </td>
+                    <td style="text-align: center;">{{ passenger.seat_no}}</td>
 
                 </tr>
                 {% endfor %}
+                
             </tbody>
         </table>
 
-        
-        <h2>Fare Rules and Charges </h2>
-        <hr style="height: 3px;">
+        <!-- baggage INFO -->
 
-                <table>
+        {% if total_hand_baggage != 0.0 and total_check_in_baggage != 0.0 %}
+        <br>
+            <h2>Passenger Baggage Information </h2>
+        
+            <br>
+            <table cellspacing="0">
+                
+                <thead>
+                    <tr>
+                        <th> Passenger Name </th>
+                        <th style="padding-left: 20px;"> Hand Baggage (in Kgs)</th>
+                        <th style="padding-left: 15px;"> Check-In Baggage (in Kgs)</th>
+                    </tr>
+                    
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td colspan="4"><hr></td>
+                    </tr>
+                    {% for passenger in booking.passengers.all %}
+                    <tr>
+                        <td>{{ forloop.counter }}. {{ passenger.first_name }} {{ passenger.last_name }} </td>
+                        <td style="text-align: center;">{{ passenger.hand_baggage }} </td>
+                        <td style="text-align: center;">{{ passenger.check_in_baggage }} </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% endif %}
+        <h2></h2>
+        <br>
+        <br> 
+        <h2>Fare Rules and Charges </h2>
+        <hr>
+
+                <table cellspacing="0">
                     <tbody>
                         <tr>
                             <td>Base Charge and Airplane Fuel Charge </td>
@@ -122,7 +228,7 @@
                             {% with adults=age_group_count.adults  ticket_price=ticket_price %}
                             <tr> 
                                 <td style="padding-left: 20px;"> Adults ({{ adults }}x Rs. {{ticket_price|intcomma}} )</td>
-                                <td> Rs. {{ ticket_price|multiply:adults|intcomma }} </td>
+                                <td style="white-space: nowrap;"> Rs. {{ ticket_price|multiply:adults|intcomma }} </td>
                             </tr>
                             {% endwith %}
                         {% endif %}
@@ -131,7 +237,7 @@
                             {% with children=age_group_count.children  ticket_price=ticket_price %}
                             <tr>
                                 <td style="padding-left: 20px;"> Children ({{ children }}x Rs. {{ticket_price|intcomma}} )</td>
-                                <td> Rs. {{ ticket_price|multiply:children|intcomma }} </td>
+                                <td style="white-space: nowrap;"> Rs. {{ ticket_price|multiply:children|intcomma }} </td>
                             </tr>
                             {% endwith %}
                         {% endif %}
@@ -168,7 +274,7 @@
                             <td style="padding-left: 20px;">Passenger Service Fee </td>
                             <td>Rs. 91.00</td>
                         </tr>
-                        <tr >
+                        <tr>
                             <td style="padding-left: 20px;">User Developement Fee </td>
                             <td>Rs. 61.00</td>
                         </tr>
@@ -182,13 +288,13 @@
                                 {% calculate_gst_total adults children infants ticket_price 0.05 as gst_total %}
                                 <tr>
                                     <td style="padding-left: 20px;">GST @ 5% on Total Base Fare </td>
-                                    <td>Rs. {{ gst_total|floatformat:"2"|intcomma }}</td>
+                                    <td style="white-space: nowrap;">Rs. {{ gst_total|floatformat:"2"|intcomma }}</td>
                                 </tr>
                             {% elif booking.seat_class == 'BUISNESS' or booking.seat_class == 'FIRST_CLASS' %}
                                 {% calculate_gst_total adults children infants ticket_price 0.12 as gst_total %}
                                 <tr>
                                     <td style="padding-left: 20px;">GST @ 12% on Total Base Fare </td>
-                                    <td>Rs. {{ gst_total|floatformat:"2"|intcomma }}</td>
+                                    <td style="white-space: nowrap;">Rs. {{ gst_total|floatformat:"2"|intcomma }}</td>
                                 </tr>
                             {% endif %}
                          {% endwith %}
@@ -208,11 +314,11 @@
                         <tr>
                             {% if booking.extra_baggage_booking_mode  == 'AT_AIRPORT' %}
                                 <td style="padding-left: 20px">Extra baggage price ( @550.0/Kg)</td>
-                                <td>Rs. {{ booking.extra_baggage_price|intcomma }}  </td>
+                                <td style="white-space: nowrap;">Rs. {{ booking.extra_baggage_price|intcomma }}  </td>
 
                             {% elif booking.extra_baggage_booking_mode  == 'PRE_BOOKING' %}
                                 <td style="padding-left: 20px">Extra baggage price </td>
-                                <td>Rs. {{ booking.extra_baggage_price|intcomma }}</td>
+                                <td style="white-space: nowrap;">Rs. {{ booking.extra_baggage_price|intcomma }}</td>
                             
                             {% endif %}
                         </tr>
@@ -222,14 +328,59 @@
                         <td><br/></td>
                     </tr>
                     <tr>
+                        <td colspan="4"><hr></td>
+                    </tr>
+                    <tr>
                         <td>Grand total </td>
-                        <td>Rs. {{ booking.total_fare|intcomma }}</td>
+                        <td style="white-space: nowrap;"> <strong>Rs. {{ booking.total_fare|floatformat:"2"|intcomma }}</strong>  </td>
                     </tr>
         
                     </tbody>
                 </table>
            
         
+                <div style="margin: 15px auto;">
+                    <br>
+                    <ul style="padding-left: 50px;">
+                        
+                    </ul>
+
+
+                    <h3>Important information</h3>
+                    <ul style="padding-left: 50px;">
+                        <li>
+                            Above details are per passenger per sector
+                        </li>
+                        <li>
+                            In case of no-show or ticket not cancelled within the stipulated time, only statutory taxes are refundable subject to Platform Service Fee
+                        </li>
+                        <li>
+                            This is your E-Ticket Iternary. You must bring it to the airport for check-in, and it is recommended you to retain a copy for your records.
+                        </li>
+                        <li>
+                            Maximum overall dimensions of cabin baggage should not exceed 115 cms (L+W+H)
+                        </li>
+                        <li>
+                            Please confirm the terminal with the airline as the same can be changed anytime before departure.
+                        </li>
+                        <li>
+                            Carry photo identification, you will need it as proof of identity while checking in
+                        </li>
+                        <li>
+                            In case of cancellation of a ticket, Platform reserves the right to levy a cancellation fee per passenger per flight/sector. The aforesaid
+                            amount may be charged by the Platform at its sole discretion and without notice to the User. Please note these charges shall be over
+                            and above the airline cancellation charges.
+                        </li>
+                        <li>
+                            Each passenger travelling needs a printed copy of this document for immigrations, customs, airport security checks and duty free purchases.
+                        </li>
+                        <li>
+                            Economy Class passengers should report to airline check-in desks 3 hours prior to departure of all flights. First and Business Class passengers should report to airline check-in desks not later than 1 hour prior to departure. Boarding for your flight begins at least 35 minutes before your scheduled departure time. Gates close 15 minutes prior to departure
+                        </li>
+                    </ul>
+                </div>
+
+                <p style="margin: 10px 0; font-size: .8em;">&#169;	 {% now "Y" %} Flight Inc. All rights reserved.</p>
 
 
 

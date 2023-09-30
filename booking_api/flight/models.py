@@ -148,7 +148,10 @@ class Booking(models.Model):
     extra_baggage_booking_mode = models.CharField(choices=EXTRA_BAGGAGE_BOOKING_MODE, blank=True, null=True)
     extra_baggage_price = models.FloatField(default=0.0)
     extra_check_in_baggage = models.FloatField(default=0.0)
-
+    round_trip = models.BooleanField(default=False)
+    return_flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="Bookings", blank=True, null=True)
+    return_flight_dep_date = models.DateField(blank=True, null=True)
+    return_flight_arriv_date = models.DateField(blank=True, null=True)
     
 
     def __str__(self):

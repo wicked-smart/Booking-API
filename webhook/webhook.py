@@ -9,18 +9,22 @@ import json
 
 app = Flask(__name__)
 
-BASE_DIR  = Path(__file__).resolve().parent.parent
+BASE_DIR  = Path(__file__).resolve().parent
 
-load_dotenv(BASE_DIR / 'booking_api/.env')
+load = load_dotenv(BASE_DIR / '.env')
+
+if not load:
+    print(".env not loaded succefully")
 
 # load all the secrets from .env
-stripe.api_key = os.environ.get('STRIPE_TEST_API_KEY')
-endpoint_secret = "whsec_KhG1qA8cTG9kdNYZjaj7nr0IVUuC0xFy"
+stripe.api_key = os.getenv('STRIPE_TEST_API_KEY')
+endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
 
 print("endpoint secret := ", endpoint_secret)
 
 
-@app.route('/')
+
+@app.route('/hello')
 def hello_world():
     return '<pre>Testing 1..2..3..!!!'
 
@@ -76,15 +80,17 @@ def webhook():
                 "booking_ref": booking_ref,
                 "payment_id": payment_intent["id"],
                 "payment_status": payment_intent["status"],
-                "webhook_secret": os.environ.get('WEBHOOK_SECRET'),
+                "webhook_secret": os.getenv('WEBHOOK_SECRET'),
                 "event": "payment"
             }
 
-            url  = "http://127.0.0.1:8000/v1/flight_api/update_booking"
+            url  = "http://web:8000/v1/flight_api/update_booking"
 
-            response = requests.post(url, json=data)
-
-            print("response := ", response.content)
+            try:
+                response = requests.post(url, json=data)
+                print("response := ", response.content)
+            except Exception as e:
+                print("An error occurred:", str(e))
 
             if response.status_code == 200:
                 return jsonify("Booking updated successfully"), 200
@@ -118,12 +124,12 @@ def webhook():
             data = {
                 "booking_ref": booking_ref,
                 "refund_status": "CREATED",
-                "webhook_secret": os.environ.get('WEBHOOK_SECRET'),
+                "webhook_secret": os.environ('WEBHOOK_SECRET'),
                 "receipt_url": receipt_url,
                 "event": "refund"
             }
 
-            url  = "http://127.0.0.1:8000/v1/flight_api/update_booking"
+            url  = "http://web:8000/v1/flight_api/update_booking"
 
             response = requests.post(url, json=data)
 

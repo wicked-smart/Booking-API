@@ -16,6 +16,7 @@ from datetime import datetime, time
 import os
 from dotenv import load_dotenv
 import stripe
+from django.urls import reverse
 
 from .utils import *
 from booking_api.settings import BASE_DIR
@@ -54,47 +55,7 @@ def initialise(request):
 
 @api_view(['GET'])
 def health_test(request):
-    booking = Booking.objects.get(booking_ref='AE0DD0')
-    duration = format_duration(booking.flight.duration)
-    #print("duration := ", duration)
-
-    #passengers age group count
-    passengers = booking.passengers.all()
-
-    adults=0
-    children=0
-    infants=0
-
-    for passenger in passengers:
-        if passenger.type == 'Adult':
-            adults+=1
-        elif passenger.type == 'Child':
-            children+=1
-        elif passenger.type == 'Infant':
-            infants+=1
-    
-    age_group_count = {
-        'adults': adults,
-        'children': children,
-        'infants': infants
-    }
-
-    # calculating ticket price
-    seat_class = booking.seat_class
-
-    if seat_class == 'ECONOMY':
-        ticket_price = booking.flight.economy_fare
-    elif seat_class == 'BUISNESS':
-        ticket_price = booking.flight.buisness_fare
-    elif seat_class == 'FIRST_CLASS':
-        ticket_price = booking.flight.first_class_fare
-
-    return render(request, "flight/ticket.html", {
-        'booking': booking,
-        "duration": duration,
-        "age_group_count": age_group_count,
-        "ticket_price": ticket_price
-    })
+    return Response({"message": "Health Test Working....."})
 
 
 @api_view(['POST'])
@@ -429,6 +390,40 @@ def book_flight(request, flight_id):
 
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+@api_view(['GET'])
+def download_pdf(request, booking_ref, pdf_type, pdf_filename):
+    # Retrieve the PDF filename from booking_ref
+    #pdf_filename = generate_reciept_pdf(booking_ref)
+
+    booking = Booking.objects.get(booking_ref=booking_ref)
+
+    # Generate the full path to the PDF
+    if pdf_type == "refund":
+        pdf_path = os.path.join(settings.MEDIA_ROOT, f"refunds/{pdf_filename}")
+
+    elif pdf_type == "ticket":
+        
+        pdf_path = os.path.join(settings.MEDIA_ROOT, f"tickets/{pdf_filename}")
+
+    # Serve the PDF for download
+    if pdf_type == "ticket":
+        if booking.payment_status == 'SUCCEDED' and booking.booking_status == 'CONFIRMED':
+
+            #generate pdf , get the filename, read the file and return as response
+            generate_ticket_pdf(booking_ref)
+            with open(pdf_path, 'rb') as pdf_file:
+                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
+                return response
+        else:
+            return Response({"message": "Please complete your payment to get the ticket's PDF!"}, status=status.HTTP_404_NOT_FOUND)
+
+    elif pdf_type == 'refund':
+        with open(pdf_path, 'rb') as pdf_file:
+                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
+                return response
 
 # GET, PUT any particular booking using booking_ref
 @api_view(['GET', 'PUT'])
@@ -512,19 +507,15 @@ def bookings(request, booking_ref):
                                 seats.save()
 
                             # create reciept pdf and send back as response
-                            receipt_url = booking.refund_receipt_url
-                            pdf_options = {
-                                'page-size': 'Letter',
-                                'margin-top': '0.75in',
-                                'margin-right': '0.75in',
-                                'margin-bottom': '0.75in',
-                                'margin-left': '0.75in',
-                            }
-                            pdf = pdfkit.from_url(receipt_url, False, pdf_options)
-                            
-                            response = HttpResponse(pdf, content_type="application/pdf")
-                            response['Content-Disposition'] = 'inline; filename="refund_reciept.pdf"'
+                            receipts_pdf_filename = generate_reciept_pdf(booking_ref)
 
+                            print("reciepts pdf filename:= ", receipts_pdf_filename)
+
+
+                            # Return a response to acknowledge the request and provide a link to download the PDF
+                            pdf_url = reverse('download_pdf', args=[booking_ref, "refund", receipts_pdf_filename])
+                            print("pdf_url := ", pdf_url)
+                            response = HttpResponse({"message": f"PDF is being generated. You can download it <a href='{pdf_url}'>here</a> once it's ready."})
                             return response
                         
                         # Sleep for a while before the next polling attempt
@@ -555,7 +546,6 @@ def payments(request, booking_ref):
     
     if request.method == 'POST':
 
-        
         
         if not stripe_test_api_key:
             return Response("{'message': 'Test API key not loaded from .env'}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -598,12 +588,20 @@ def payments(request, booking_ref):
             payment_method= "pm_card_visa"
         )
 
+        #generate Ticket PDF
+        ticket_pdf_filename = f"booking_ticket_{booking.booking_ref}.pdf"
+
+        pdf_url = reverse('download_pdf', args=[booking_ref, "ticket", ticket_pdf_filename])
+        print("pdf_url := ", pdf_url)
+
         # prepare the response 
         response_return = {
             "payemnt_intent_id": payment_intent_id,
+            "ticket_pdf_url": f"Your Ticket will be availalbe <a href='{pdf_url}'>here</a> once you have succesfully completed next_action of authenticating url !!",
             "next_action": "Click on the hook url with this response and ping GET endpoint for payment confirmation ",
             "url": confirm["next_action"]
         }
+
 
         return Response(response_return, status=status.HTTP_200_OK)
 
@@ -625,7 +623,7 @@ def update_booking(request):
 
 
             if booking.booking_status != 'PENDING':
-                return Response({"message": "Not Allowed!"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"message": "PENDING Not Allowed!"}, status=status.HTTP_404_NOT_FOUND)
 
 
             payment_status = data.get("payment_status")
@@ -643,7 +641,7 @@ def update_booking(request):
             return Response({'message': 'booking successfully updated!'}, status=status.HTTP_200_OK)
 
         else:
-            return Response({'message': 'Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': ' hooha Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
 
     elif data["event"] == "refund":
 
@@ -703,7 +701,7 @@ def logoutt(request):
 def test_pdf(request, booking_ref):
 
     try:
-        booking = Booking.objects.get(booking_ref='82A89F')
+        booking = Booking.objects.get(booking_ref=booking_ref)
     
     except Booking.DoesNotExist:
         return Response({'message': f"Booking with reference {booking_ref} does not exists! "}, status=status.HTTP_400_BAD_REQUEST)
@@ -723,7 +721,56 @@ def test_pdf(request, booking_ref):
     template = get_template('flight/ticket.html')
 
     #context 
-    context = {"booking": booking}
+
+    duration = format_duration(booking.flight.duration)
+    #print("duration := ", duration)
+
+    #passengers age group count
+    passengers = booking.passengers.all()
+
+    adults=0
+    children=0
+    infants=0
+
+    for passenger in passengers:
+        if passenger.type == 'Adult':
+            adults+=1
+        elif passenger.type == 'Child':
+            children+=1
+        elif passenger.type == 'Infant':
+            infants+=1
+    
+    age_group_count = {
+        'adults': adults,
+        'children': children,
+        'infants': infants
+    }
+
+    # calculating ticket price
+    seat_class = booking.seat_class
+
+    if seat_class == 'ECONOMY':
+        ticket_price = booking.flight.economy_fare
+    elif seat_class == 'BUISNESS':
+        ticket_price = booking.flight.buisness_fare
+    elif seat_class == 'FIRST_CLASS':
+        ticket_price = booking.flight.first_class_fare
+    
+    #total baggage information
+    total_hand_baggage=0.0
+    total_check_in_baggage=0.0
+    for passenger in passengers:
+        total_hand_baggage += passenger.hand_baggage
+        total_check_in_baggage += passenger.check_in_baggage
+
+    context = {
+        'booking': booking,
+        "duration": duration,
+        "age_group_count": age_group_count,
+        "ticket_price": ticket_price,
+        "total_hand_baggae": total_hand_baggage,
+        "total_check_in_baggage": total_check_in_baggage
+        }
 
     rendered_template = template.render(context)
     print("rendered_template := ", rendered_template)

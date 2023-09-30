@@ -87,7 +87,7 @@ class FlightSerializer(serializers.ModelSerializer):
         
         dynamic_data = {}
 
-        if price and seat_class:
+        if (price and seat_class) or (not price and seat_class) :
             if seat_class == 'ECONOMY':
                 dynamic_data['economy_fare'] = obj.economy_fare
 
@@ -208,6 +208,14 @@ class FlightParamSerializer(serializers.Serializer):
             if not seat_class:
                 raise ValidationError("seat_class  is must for ordering by price!!!")
 
+        booking_date = attrs.get('booking_date')
+        print("booking_date := ", booking_date)
+
+        if booking_date:
+            #booking_date = datetime.strptime(booking_date, '%d-%m-%Y').date()
+
+            if booking_date < datetime.now().date():
+                raise ValidationError("Booking date cannot be earlier than today!!")
 
         return attrs
 
@@ -280,7 +288,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             return attrs
 
         date_str = attrs['flight_dep_date']
-        date_obj = datetime.strptime(date_str, "%d-%m-%Y")
+        date_obj = datetime.strptime(date_str, "%d-%m-%Y").date()
 
         passengers = attrs.get('passengers')
 
@@ -296,8 +304,8 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                     raise ValidationError("Hand Baggage Per customer cannot be more thaan 7 kgs !! ")
         
 
-        if date_obj < datetime.today():
-            raise ValidationError("Invalid Departure date!")
+        if date_obj < datetime.today().date():
+            raise ValidationError("Departure Date Cannot be Earlier than Current Day!")
 
 
         if not flight:
