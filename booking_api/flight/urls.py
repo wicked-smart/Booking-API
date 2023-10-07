@@ -17,7 +17,10 @@ urlpatterns = [
     path('flight_details/<int:flight_id>', views.flight_details, name="flight_details"),
     path('test_pdf/<str:booking_ref>', views.test_pdf, name="test-pdf"),
     path('download_pdf/<str:booking_ref>/<str:pdf_type>/<str:pdf_filename>', views.download_pdf, name="download_pdf"),
-    path('logout', views.logoutt, name="logout")
+    path('logout', views.logoutt, name="logout"),
+    path('testing_celery', views.testing_celery, name='celery'),
+    path('webhook/', views.stripe_webhook, name='stripe_webhook'),
+
 ]
 
 urlpatterns += static(settings.STATIC_URL, document=settings.STATIC_ROOT)

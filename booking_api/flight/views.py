@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import HttpResponse, HttpRequest
+from django.http import HttpResponse, HttpRequest, JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from flight.serializers.AuthSerializers import *
 from flight.serializers.ModelSerializers import *
@@ -24,6 +24,11 @@ from django.middleware.csrf import get_token
 import pdfkit 
 from django.template.loader import get_template
 from django.template import Context
+from .tasks import *
+from celery.result import AsyncResult
+import json
+
+
 
 #load .env file
 load_dotenv(BASE_DIR / '.env')
@@ -376,12 +381,14 @@ def book_flight(request, flight_id):
 
     try:
         flight = Flight.objects.get(pk=flight_id)
+        
     except Flight.DoesNotExist:
         return Response({'message': 'Flight Does not exists!'}, status=status.HTTP_404_NOT_FOUND)
     
     if request.method == 'POST':
 
         data = request.data
+
         serializer = FlightBookingSerializer(data=data, context={'request': request, 'flight': flight})
 
         if serializer.is_valid():
@@ -411,19 +418,35 @@ def download_pdf(request, booking_ref, pdf_type, pdf_filename):
         if booking.payment_status == 'SUCCEDED' and booking.booking_status == 'CONFIRMED':
 
             #generate pdf , get the filename, read the file and return as response
-            generate_ticket_pdf(booking_ref)
-            with open(pdf_path, 'rb') as pdf_file:
-                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-                response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
-                return response
-        else:
+            #generate_ticket_pdf.delay(booking_ref)
+            generate_ticket_pdf.delay(booking_ref)
+            
+            max_retries = 5
+            retry_interval = 2  # seconds
+
+            for _ in range(max_retries):
+                try:
+                    with open(pdf_path, 'rb') as pdf_file:
+                        response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                        response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
+                        return response
+                except FileNotFoundError:
+                    timemodule.sleep(retry_interval)
+
+            response_message = "The PDF is not available yet. Please check back later."
+            return Response({"message": response_message}, status=202)
+        
+        else:        
             return Response({"message": "Please complete your payment to get the ticket's PDF!"}, status=status.HTTP_404_NOT_FOUND)
 
     elif pdf_type == 'refund':
         with open(pdf_path, 'rb') as pdf_file:
-                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-                response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
-                return response
+            response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
+            return response
+    
+        response_message = "The PDF is not available yet. Please check back later."
+        return Response({"message": response_message}, status=202)
 
 # GET, PUT any particular booking using booking_ref
 @api_view(['GET', 'PUT'])
@@ -446,7 +469,7 @@ def bookings(request, booking_ref):
 
         print("booking := ", booking)
         if serializer.is_valid():
-
+            
             #cancel the ticket
             booking.booking_status= 'CANCELED'
 
@@ -487,51 +510,65 @@ def bookings(request, booking_ref):
                         }
                     )
 
-        
-
-                    max_poll_attempts = 10  # Adjust as needed
-                    poll_interval = 5  # Adjust as needed (seconds)
-                    current_attempt = 0
-                    
-                    while current_attempt < max_poll_attempts:
-                        booking.refresh_from_db()  # Refresh the booking object from the database
-                        if booking.booking_status == 'CANCELED' and booking.refund_status == 'CREATED':
-                            #make sets is_booked=False
-                            passengers = booking.passengers.all()
-
-                            #make the seats available
-                            for passenger in passengers:
-                                seats = Seats.objects.filter(flight=booking.flight, departure_date=booking.flight_dep_date,passenger=passenger, is_booked=True).first()
-                                seats.is_booked= False
-                                seats.passenger = None
-                                seats.save()
-
-                            # create reciept pdf and send back as response
-                            receipts_pdf_filename = generate_reciept_pdf(booking_ref)
-
-                            print("reciepts pdf filename:= ", receipts_pdf_filename)
-
-
-                            # Return a response to acknowledge the request and provide a link to download the PDF
-                            pdf_url = reverse('download_pdf', args=[booking_ref, "refund", receipts_pdf_filename])
-                            print("pdf_url := ", pdf_url)
-                            response = HttpResponse({"message": f"PDF is being generated. You can download it <a href='{pdf_url}'>here</a> once it's ready."})
-                            return response
                         
-                        # Sleep for a while before the next polling attempt
-                        timemodule.sleep(poll_interval)
-                        current_attempt += 1
-                    
-                    if not (booking.booking_status == 'CANCELED' and booking.refund_status == 'CREATED'):
-        
-                        return Response({'message': "Could not process refund , Try again !!"}, status=status.HTTP_400_BAD_REQUEST)
+                    pdf_url = reverse('download_pdf', args=[booking_ref, "refund", f"refund_receipt_{booking_ref}.pdf"])
+                    print("pdf_url := ", pdf_url)
+                    return Response({"message": f"PDF is being generated. You can download it <a href='{pdf_url}'>here</a> once it's ready."}, status=status.HTTP_200_OK)
+                
 
+                    #return Response({"message": "Refund is yet not complete yet..check out later!!!"}, status=status.HTTP_404_NOT_FOUND)
+                    
             except stripe.error.StripeError as e:
-                print("Stripe error:", str(e))
-                return Response({'message': "Could not process refund due to Stripe error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({'message': f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        '''
+            max_poll_attempts = 10  # Adjust as needed
+            poll_interval = 5  # Adjust as needed (seconds)
+            current_attempt = 0
+            
+            while current_attempt < max_poll_attempts:
+                booking.refresh_from_db()  # Refresh the booking object from the database
+                if booking.booking_status == 'CANCELED' and booking.refund_status == 'CREATED':
+                    #make sets is_booked=False
+                    passengers = booking.passengers.all()
+
+                    #make the seats available
+                    for passenger in passengers:
+                        seats = Seats.objects.filter(flight=booking.flight, departure_date=booking.flight_dep_date,passenger=passenger, is_booked=True).first()
+                        seats.is_booked= False
+                        seats.passenger = None
+                        seats.save()
+
+                    # create reciept pdf and send back as response
+                    refund_task = generate_reciept_pdf.delay(booking_ref)
+                    receipts_pdf_filename = f"refund_receipt_{booking_ref}.pdf"
+
+                    print("Inside bookings PUT call")
+
+
+                    # Return a response to acknowledge the request and provide a link to download the PDF
+                    pdf_url = reverse('download_pdf', args=[booking_ref, "refund", receipts_pdf_filename])
+                    print("pdf_url := ", pdf_url)
+                    return HttpResponse({"message": f"PDF is being generated with task id {refund_task.id}. You can download it <a href='{pdf_url}'>here</a> once it's ready."}, status=status.HTTP_200_OK)
+                    
+                
+                # Sleep for a while before the next polling attempt
+                timemodule.sleep(poll_interval)
+                current_attempt += 1
+    
+    
+            
+            
+            if not (booking.booking_status == 'CANCELED' and booking.refund_status == 'CREATED'):
+
+                return Response({'message': "Could not process refund , Try again !!"}, status=status.HTTP_400_BAD_REQUEST)
+        '''
+    
+
     
 
 # payments endpoint
@@ -641,7 +678,7 @@ def update_booking(request):
             return Response({'message': 'booking successfully updated!'}, status=status.HTTP_200_OK)
 
         else:
-            return Response({'message': ' hooha Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': 'Internal Route..Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
 
     elif data["event"] == "refund":
 
@@ -678,7 +715,7 @@ def update_booking(request):
             return Response({'message': 'Refund successfully created!'}, status=status.HTTP_200_OK)
 
         else:
-            return Response({'message': 'Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': 'Missing secret, request not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -785,10 +822,127 @@ def test_pdf(request, booking_ref):
     return response
 
 
+@api_view(['GET'])
+def testing_celery(request):
+
+    pass
 
 
-    # Create an HttpResponse with PDF content
-    response = HttpResponse(pdf_content, content_type='application/pdf')
-    response['Content-Disposition'] = 'inline; filename="refund_reciept.pdf"'
+@api_view(['POST'])
+def stripe_webhook(request):
 
-    return response
+    if request.method == 'POST':
+
+        print("headers := ",request.headers)
+
+        event = None
+        payload = request.body
+
+        try:
+             event = json.loads(payload)
+        #print('Received event:', event)
+        except:
+             print('⚠️  Webhook error while parsing basic request.' + str(e))
+             return JsonResponse({"message": "couldn't process the load "})
+    
+        # Replace with your Stripe webhook secret
+        endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
+
+        
+        if endpoint_secret:
+            try:
+                # Verify the event using the endpoint secret
+                event = stripe.Webhook.construct_event(
+                    payload, request.headers.get('Stripe-Signature'), endpoint_secret
+                )
+            except stripe.error.SignatureVerificationError as e:
+                print('⚠️  Webhook signature verification failed.' + str(e))
+                print(request.headers.get('stripe-signature'))
+                return JsonResponse({"message": f"Webhook signature verification failed! with endpoint_secret {endpoint_secret}"}, status=400)
+
+        # Handle the event
+        if event and event.type == 'payment_intent.succeeded':
+            payment_intent = event['data']['object']  # contains a stripe.PaymentIntent
+            print('Payment for {} succeeded'.format(payment_intent['amount']))
+            
+
+            if 'metadata' in payment_intent:
+
+                booking_ref = payment_intent['metadata'].get('booking_ref')
+                print("booking_ref := ", booking_ref)
+                try:
+                    booking = Booking.objects.get(booking_ref=booking_ref)
+                except Booking.DoesNotExist:
+                    return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+                if booking.booking_status != 'PENDING':
+                    return Response({"message": "PENDING Not Allowed!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+                payment_status = payment_intent.get("status")
+                payment_id = payment_intent.get("id")
+
+                if payment_status is not None:
+                    booking.booking_status = 'CONFIRMED'
+                    booking.payment_status = 'SUCCEDED'
+
+                if payment_id is not None:
+                    booking.payment_ref = payment_id
+
+                booking.save()
+
+                return Response({'message': 'booking successfully updated!'}, status=status.HTTP_200_OK)
+            
+            else:
+                print('⚠️  Metadata attribute not found in payment_intent object')
+                return JsonResponse({"message": 'Metadata attribute not found in payment_intent object'}, status=400)       
+
+        elif event.type == 'payment_intent.created':
+            return JsonResponse({'message': 'payemnt intent created succesfully!'}, status=200)
+            # Handle the attached payment method event here
+
+        elif event.type == 'charge.refunded':
+            refund_object = event['data']['object']
+            print("Event charge.refund succeeded....")
+
+            if 'metadata' in refund_object:
+                booking_ref = refund_object['metadata'].get('booking_ref')
+                receipt_url = refund_object['receipt_url']
+
+                print("receipt_url := ",receipt_url)
+
+                try:
+                    booking = Booking.objects.get(booking_ref=booking_ref)
+                except Booking.DoesNotExist:
+                    return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+                if booking.booking_status != 'CONFIRMED':
+                    return Response({"message": "Not eligible for refund!! "}, status=status.HTTP_404_NOT_FOUND)
+
+
+                refund_status = refund_object.get("status")
+                #payment_id = data.get("payment_id")
+
+                if refund_status is not None and refund_status == "succeeded":
+                    booking.refund_status = 'CREATED'
+                    booking.payment_status = 'REFUNDED'
+
+                if receipt_url is not None:
+                    booking.refund_receipt_url = receipt_url
+
+                booking.booking_status = 'CANCELED'
+
+                booking.save()
+
+                generate_reciept_pdf.delay(booking_ref)
+
+                return Response({'message': 'Refund successfully created!'}, status=status.HTTP_200_OK)
+
+                    
+
+        else:
+            # Unexpected event type
+            return JsonResponse({'error': 'Unhandled event type'}, status=400)
+

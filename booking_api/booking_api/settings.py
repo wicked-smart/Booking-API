@@ -152,3 +152,11 @@ CACHES = {
         "LOCATION": "unique-snowflake",
     }
 }
+
+# Celery settings
+CELERY_APP = 'flight'
+CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://redis:6379/0')  # Including the database number
+CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL', 'redis://redis:6379/0')  # Including the database number
+CELERY_TIMEZONE = "Asia/Kolkata"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

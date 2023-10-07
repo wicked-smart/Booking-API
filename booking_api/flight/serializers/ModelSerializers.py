@@ -279,16 +279,28 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             if not booking:
                 raise ValidationError("Booking object Not passed to the Serializer !!!")
 
-            if attrs['booking_status'] != 'CANCELED':
-                raise ValidationError("Not Allowed !!")
+            booking_status = attrs.get("booking_status")
+            if not booking_status or  booking_status != 'CANCELED':
+                raise ValidationError("Invalid booking_status update  !!")
             
             if booking.booking_status == 'CANCELED' or booking.booking_status == 'PENDING':
                 raise ValidationError("Not a Valid Call !!!")
             
             return attrs
 
-        date_str = attrs['flight_dep_date']
+        date_str = attrs.get('flight_dep_date')
+
         date_obj = datetime.strptime(date_str, "%d-%m-%Y").date()
+
+        if date_obj < datetime.today().date():
+            raise ValidationError("Departure Date Cannot be Earlier than Current Day!")
+        
+        departure_time = flight.depart_time
+        combined_datetime = datetime.combine(date_obj, departure_time)
+        
+        if combined_datetime < datetime.now():
+            raise ValidationError("Departure DateTime Cannot be Earlier than Current DateTime!")
+
 
         passengers = attrs.get('passengers')
 
@@ -304,8 +316,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                     raise ValidationError("Hand Baggage Per customer cannot be more thaan 7 kgs !! ")
         
 
-        if date_obj < datetime.today().date():
-            raise ValidationError("Departure Date Cannot be Earlier than Current Day!")
+        
 
 
         if not flight:

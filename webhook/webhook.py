@@ -124,7 +124,7 @@ def webhook():
             data = {
                 "booking_ref": booking_ref,
                 "refund_status": "CREATED",
-                "webhook_secret": os.environ('WEBHOOK_SECRET'),
+                "webhook_secret": os.getenv('WEBHOOK_SECRET'),
                 "receipt_url": receipt_url,
                 "event": "refund"
             }

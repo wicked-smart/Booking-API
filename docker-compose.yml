@@ -21,6 +21,7 @@ services:
     - DB_USER=prem
     - DB_PASSWORD=postgres
     - DB_NAME=postgres 
+    - STRIPE_WEBHOOK_SECRET=whsec_KhG1qA8cTG9kdNYZjaj7nr0IVUuC0xFy
     command: >
       sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
 
@@ -46,10 +47,31 @@ services:
       - "4040:4040"  # Ngrok web interface port
     environment:
       - NGROK_AUTHTOKEN='r3wDdpmLoPXFL8HTU91_5SFcWY8GsdWgaQBHJnPNW'
-    command: ["ngrok", "http", "webhook:5000"]
+    command: ["ngrok", "http", "web:8000"]
     depends_on:
-      - webhook
+      - web
 
+  redis:
+    image: redis:latest
+    ports:
+      - "6378:6379"
+  
+  celery:
+    build:
+      context: ./booking_api
+      dockerfile: Dockerfile.celery  # Create a Dockerfile for your Celery worker configuration
+    volumes:
+    - ./booking_api:/app
+    environment:
+      - DB_HOST=db
+      - DB_USER=prem
+      - DB_PASSWORD=postgres
+      - DB_NAME=postgres
+      - REDIS_URL=redis://redis:6379/0  # Redis connection URL
+
+    depends_on:
+      - db
+      - redis
 
 volumes:
   postgres-data: 
