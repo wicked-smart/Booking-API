@@ -397,7 +397,9 @@ def book_flight(request, flight_id):
 
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
+
+#download refunds receipts and tickets
 @api_view(['GET'])
 def download_pdf(request, booking_ref, pdf_type, pdf_filename):
     # Retrieve the PDF filename from booking_ref
@@ -421,32 +423,28 @@ def download_pdf(request, booking_ref, pdf_type, pdf_filename):
             #generate_ticket_pdf.delay(booking_ref)
             generate_ticket_pdf.delay(booking_ref)
             
-            max_retries = 5
-            retry_interval = 2  # seconds
-
-            for _ in range(max_retries):
-                try:
-                    with open(pdf_path, 'rb') as pdf_file:
-                        response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-                        response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
-                        return response
-                except FileNotFoundError:
-                    timemodule.sleep(retry_interval)
-
-            response_message = "The PDF is not available yet. Please check back later."
-            return Response({"message": response_message}, status=202)
+            try:
+                with open(pdf_path, 'rb') as pdf_file:
+                    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                    response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
+                    return response
+            except FileNotFoundError:
+                response_message = "The PDF is not available yet. Please check back later."
+                return Response({"message": response_message}, status=status.HTTP_202_ACCEPTED)
         
+    
         else:        
             return Response({"message": "Please complete your payment to get the ticket's PDF!"}, status=status.HTTP_404_NOT_FOUND)
 
     elif pdf_type == 'refund':
-        with open(pdf_path, 'rb') as pdf_file:
-            response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
-            return response
-    
-        response_message = "The PDF is not available yet. Please check back later."
-        return Response({"message": response_message}, status=202)
+        try:
+            with open(pdf_path, 'rb') as pdf_file:
+                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
+                return response
+        except FileNotFoundError:
+            response_message = "The PDF is not available yet. Please check back later."
+            return Response({"message": response_message}, status=202)
 
 # GET, PUT any particular booking using booking_ref
 @api_view(['GET', 'PUT'])
@@ -642,192 +640,7 @@ def payments(request, booking_ref):
 
         return Response(response_return, status=status.HTTP_200_OK)
 
-
-@api_view(['POST'])
-def update_booking(request):
-    data = request.data
-
-    if data["event"] == "payment":
-
-        if 'webhook_secret' in data and data["webhook_secret"] == os.environ.get('WEBHOOK_SECRET'):
-
-            booking_ref = data.get("booking_ref")
-
-            try:
-                booking = Booking.objects.get(booking_ref=booking_ref)
-            except Booking.DoesNotExist:
-                return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
-
-
-            if booking.booking_status != 'PENDING':
-                return Response({"message": "PENDING Not Allowed!"}, status=status.HTTP_404_NOT_FOUND)
-
-
-            payment_status = data.get("payment_status")
-            payment_id = data.get("payment_id")
-
-            if payment_status is not None:
-                booking.booking_status = 'CONFIRMED'
-                booking.payment_status = 'SUCCEDED'
-
-            if payment_id is not None:
-                booking.payment_ref = payment_id
-
-            booking.save()
-
-            return Response({'message': 'booking successfully updated!'}, status=status.HTTP_200_OK)
-
-        else:
-            return Response({'message': 'Internal Route..Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
-
-    elif data["event"] == "refund":
-
-
-        if 'webhook_secret' in data and data["webhook_secret"] == os.environ.get('WEBHOOK_SECRET'):
-
-            booking_ref = data.get("booking_ref")
-            receipt_url = data.get("receipt_url")
-
-            try:
-                booking = Booking.objects.get(booking_ref=booking_ref)
-            except Booking.DoesNotExist:
-                return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
-
-
-            if booking.booking_status != 'CONFIRMED':
-                return Response({"message": "Not eligible for refund!! "}, status=status.HTTP_404_NOT_FOUND)
-
-
-            refund_status = data.get("refund_status")
-            #payment_id = data.get("payment_id")
-
-            if refund_status is not None:
-                booking.refund_status = refund_status
-                booking.payment_status = 'REFUNDED'
-
-            if receipt_url is not None:
-                booking.refund_receipt_url = receipt_url
-
-            booking.booking_status = 'CANCELED'
-
-            booking.save()
-
-            return Response({'message': 'Refund successfully created!'}, status=status.HTTP_200_OK)
-
-        else:
-            return Response({'message': 'Missing secret, request not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
-
-
-
-@api_view(['POST'])
-def logoutt(request):
-
-    if request.user.is_authenticated:
-        logout(request)
-        return Response({"message": "you've been successfully logged out!!!"})
-    
-    
-
-    return Response({"message": "you're already logged out!!!"})
-    
-
-
-# pdf generation endpoint 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def test_pdf(request, booking_ref):
-
-    try:
-        booking = Booking.objects.get(booking_ref=booking_ref)
-    
-    except Booking.DoesNotExist:
-        return Response({'message': f"Booking with reference {booking_ref} does not exists! "}, status=status.HTTP_400_BAD_REQUEST)
-    
-    pdf_options = {
-        'page-size': 'Letter',
-        'margin-top': '0.75in',
-        'margin-right': '0.75in',
-        'margin-bottom': '0.75in',
-        'margin-left': '0.75in',
-    }
-
-    #url = "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xTlRQWWhTQmx3TnB1eEIyKPqpvKcGMgYIwlewUVQ6LBYz3XfSXJTk9fkJqr4qqp10M8sWYFHE66zDcvHG5zPO6bhJcfxywawR6FGQ"
-    # Generate the PDF from the URL
-    #pdf_content = pdfkit.from_url(url, False, options=pdf_options)
-
-    template = get_template('flight/ticket.html')
-
-    #context 
-
-    duration = format_duration(booking.flight.duration)
-    #print("duration := ", duration)
-
-    #passengers age group count
-    passengers = booking.passengers.all()
-
-    adults=0
-    children=0
-    infants=0
-
-    for passenger in passengers:
-        if passenger.type == 'Adult':
-            adults+=1
-        elif passenger.type == 'Child':
-            children+=1
-        elif passenger.type == 'Infant':
-            infants+=1
-    
-    age_group_count = {
-        'adults': adults,
-        'children': children,
-        'infants': infants
-    }
-
-    # calculating ticket price
-    seat_class = booking.seat_class
-
-    if seat_class == 'ECONOMY':
-        ticket_price = booking.flight.economy_fare
-    elif seat_class == 'BUISNESS':
-        ticket_price = booking.flight.buisness_fare
-    elif seat_class == 'FIRST_CLASS':
-        ticket_price = booking.flight.first_class_fare
-    
-    #total baggage information
-    total_hand_baggage=0.0
-    total_check_in_baggage=0.0
-    for passenger in passengers:
-        total_hand_baggage += passenger.hand_baggage
-        total_check_in_baggage += passenger.check_in_baggage
-
-    context = {
-        'booking': booking,
-        "duration": duration,
-        "age_group_count": age_group_count,
-        "ticket_price": ticket_price,
-        "total_hand_baggae": total_hand_baggage,
-        "total_check_in_baggage": total_check_in_baggage
-        }
-
-    rendered_template = template.render(context)
-    print("rendered_template := ", rendered_template)
-
-    #pdfkit using from string
-    pdf = pdfkit.from_string(rendered_template, False, pdf_options)
-
-    #create a HttpResponse with PDF content
-    response = HttpResponse(pdf, content_type="application/pdf")
-    response['Content-Disposition'] = 'attachment; filename="generated_pdf.pdf"'
-
-    return response
-
-
-@api_view(['GET'])
-def testing_celery(request):
-
-    pass
-
-
+# handling stripe webhook events
 @api_view(['POST'])
 def stripe_webhook(request):
 
@@ -945,4 +758,202 @@ def stripe_webhook(request):
         else:
             # Unexpected event type
             return JsonResponse({'error': 'Unhandled event type'}, status=400)
+
+
+@api_view(['POST'])
+def logoutt(request):
+
+    if request.user.is_authenticated:
+        logout(request)
+        return Response({"message": "you've been successfully logged out!!!"})
+    
+    
+
+    return Response({"message": "you're already logged out!!!"})
+   
+
+
+'''
+@api_view(['POST'])
+def update_booking(request):
+    data = request.data
+
+    if data["event"] == "payment":
+
+        if 'webhook_secret' in data and data["webhook_secret"] == os.environ.get('WEBHOOK_SECRET'):
+
+            booking_ref = data.get("booking_ref")
+
+            try:
+                booking = Booking.objects.get(booking_ref=booking_ref)
+            except Booking.DoesNotExist:
+                return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+            if booking.booking_status != 'PENDING':
+                return Response({"message": "PENDING Not Allowed!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+            payment_status = data.get("payment_status")
+            payment_id = data.get("payment_id")
+
+            if payment_status is not None:
+                booking.booking_status = 'CONFIRMED'
+                booking.payment_status = 'SUCCEDED'
+
+            if payment_id is not None:
+                booking.payment_ref = payment_id
+
+            booking.save()
+
+            return Response({'message': 'booking successfully updated!'}, status=status.HTTP_200_OK)
+
+        else:
+            return Response({'message': 'Internal Route..Not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
+
+    elif data["event"] == "refund":
+
+
+        if 'webhook_secret' in data and data["webhook_secret"] == os.environ.get('WEBHOOK_SECRET'):
+
+            booking_ref = data.get("booking_ref")
+            receipt_url = data.get("receipt_url")
+
+            try:
+                booking = Booking.objects.get(booking_ref=booking_ref)
+            except Booking.DoesNotExist:
+                return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+            if booking.booking_status != 'CONFIRMED':
+                return Response({"message": "Not eligible for refund!! "}, status=status.HTTP_404_NOT_FOUND)
+
+
+            refund_status = data.get("refund_status")
+            #payment_id = data.get("payment_id")
+
+            if refund_status is not None:
+                booking.refund_status = refund_status
+                booking.payment_status = 'REFUNDED'
+
+            if receipt_url is not None:
+                booking.refund_receipt_url = receipt_url
+
+            booking.booking_status = 'CANCELED'
+
+            booking.save()
+
+            return Response({'message': 'Refund successfully created!'}, status=status.HTTP_200_OK)
+
+        else:
+            return Response({'message': 'Missing secret, request not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
+
+
+'''
+
+
+
+ 
+
+'''
+     pdf generation endpoint 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def test_pdf(request, booking_ref):
+
+    try:
+        booking = Booking.objects.get(booking_ref=booking_ref)
+    
+    except Booking.DoesNotExist:
+        return Response({'message': f"Booking with reference {booking_ref} does not exists! "}, status=status.HTTP_400_BAD_REQUEST)
+    
+    pdf_options = {
+        'page-size': 'Letter',
+        'margin-top': '0.75in',
+        'margin-right': '0.75in',
+        'margin-bottom': '0.75in',
+        'margin-left': '0.75in',
+    }
+
+    #url = "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xTlRQWWhTQmx3TnB1eEIyKPqpvKcGMgYIwlewUVQ6LBYz3XfSXJTk9fkJqr4qqp10M8sWYFHE66zDcvHG5zPO6bhJcfxywawR6FGQ"
+    # Generate the PDF from the URL
+    #pdf_content = pdfkit.from_url(url, False, options=pdf_options)
+
+    template = get_template('flight/ticket.html')
+
+    #context 
+
+    duration = format_duration(booking.flight.duration)
+    #print("duration := ", duration)
+
+    #passengers age group count
+    passengers = booking.passengers.all()
+
+    adults=0
+    children=0
+    infants=0
+
+    for passenger in passengers:
+        if passenger.type == 'Adult':
+            adults+=1
+        elif passenger.type == 'Child':
+            children+=1
+        elif passenger.type == 'Infant':
+            infants+=1
+    
+    age_group_count = {
+        'adults': adults,
+        'children': children,
+        'infants': infants
+    }
+
+    # calculating ticket price
+    seat_class = booking.seat_class
+
+    if seat_class == 'ECONOMY':
+        ticket_price = booking.flight.economy_fare
+    elif seat_class == 'BUISNESS':
+        ticket_price = booking.flight.buisness_fare
+    elif seat_class == 'FIRST_CLASS':
+        ticket_price = booking.flight.first_class_fare
+    
+    #total baggage information
+    total_hand_baggage=0.0
+    total_check_in_baggage=0.0
+    for passenger in passengers:
+        total_hand_baggage += passenger.hand_baggage
+        total_check_in_baggage += passenger.check_in_baggage
+
+    context = {
+        'booking': booking,
+        "duration": duration,
+        "age_group_count": age_group_count,
+        "ticket_price": ticket_price,
+        "total_hand_baggae": total_hand_baggage,
+        "total_check_in_baggage": total_check_in_baggage
+        }
+
+    rendered_template = template.render(context)
+    print("rendered_template := ", rendered_template)
+
+    #pdfkit using from string
+    pdf = pdfkit.from_string(rendered_template, False, pdf_options)
+
+    #create a HttpResponse with PDF content
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response['Content-Disposition'] = 'attachment; filename="generated_pdf.pdf"'
+
+    return response
+
+
+@api_view(['GET'])
+def testing_celery(request):
+
+    pass
+
+
+
+
+'''
+
 
