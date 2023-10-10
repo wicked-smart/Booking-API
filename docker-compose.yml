@@ -28,18 +28,18 @@ services:
     depends_on:
     - db  
   
-  webhook:
-    build: 
-      context: ./webhook
-      dockerfile: Dockerfile
-    environment:
-     - FLASK_APP=webhook.py 
-     - FLASK_ENV=development
-     - STRIPE_WEBHOOK_SECRET=whsec_KhG1qA8cTG9kdNYZjaj7nr0IVUuC0xFy
-    ports:
-     - "5000:5000"
-    depends_on:
-     - web
+  # webhook:
+  #   build: 
+  #     context: ./webhook
+  #     dockerfile: Dockerfile
+  #   environment:
+  #    - FLASK_APP=webhook.py 
+  #    - FLASK_ENV=development
+  #    - STRIPE_WEBHOOK_SECRET=whsec_KhG1qA8cTG9kdNYZjaj7nr0IVUuC0xFy
+  #   ports:
+  #    - "5000:5000"
+  #   depends_on:
+  #    - web
 
   ngrok-flask:
     image: wernight/ngrok

@@ -10,7 +10,7 @@ import time as timemodule
 from django.contrib.auth import authenticate, logout, login
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from .pagination import CustomPageNumberPagination
+from .pagination import *
 from django.views.decorators.cache import cache_page
 from datetime import datetime, time
 import os
@@ -126,7 +126,7 @@ def airports(request):
         airports = Airport.objects.all()
 
         #pagination 
-        paginator = CustomPageNumberPagination()
+        paginator = CombinedPagination()
         paginated_airports = paginator.paginate_queryset(airports, request)
 
         serializer = AirportSerializer(paginated_airports, many=True)
@@ -162,7 +162,7 @@ def flights(request):
     if request.method == 'GET':
  
 
-        paginator = CustomPageNumberPagination()
+        paginator = CombinedPagination()
         print("request := ", request)
 
         params = request.query_params
@@ -175,6 +175,8 @@ def flights(request):
             if queryParamSerializer.is_valid():
 
                 #get all the filters
+                round_trip = queryParamSerializer.validated_data.get('round_trip')
+                return_date = queryParamSerializer.validated_data.get('return_date')
                 flight_number = queryParamSerializer.validated_data.get('flight_number')
                 origin_city = queryParamSerializer.validated_data.get('origin')
                 destination_city = queryParamSerializer.validated_data.get('destination')
@@ -189,6 +191,9 @@ def flights(request):
                 sort_by = queryParamSerializer.validated_data.get('sort_by')
 
                 filters = {}
+
+                
+
 
                 if origin_city and destination_city:
 
@@ -249,8 +254,7 @@ def flights(request):
             
                     week_number = booking_date.weekday()
 
-                    week = Week.objects.get(number=week_number)
-                    filters['departure_weekday'] = week 
+                    filters['departure_weekday__number'] = week_number 
     
                     
                 
@@ -311,11 +315,13 @@ def flights(request):
                 if layover_duration:
                     pass 
             
-                
+                    
                         
 
-                print("filter:= ", filters)
+                print("departing filter:= ", filters)
+                #paginator = FlightCombinedPagination()
                 flights = Flight.objects.filter(**filters)
+                print("departing flights := ", flights)
 
                 if sort_by:
 
@@ -335,21 +341,86 @@ def flights(request):
                     
                     elif sort_by == 'DURATION':
                         flights = flights.order_by('duration')
-
-
+            
 
                 if flights.exists():
-                    paginated_flights = paginator.paginate_queryset(flights, request)
-
+                    #paginated_flights = paginator.paginate_queryset(flights, request)
+                    departing_flight_serializer = FlightSerializer(flights, many=True, context={'request': request})
                 else:
+                    paginated_flights = None
+                    departing_flight_serializer = None
+
+                #check for return type and prepare the return filters
+                if round_trip is True:
+
+                    week_number = return_date.weekday()
+                    week = Week.objects.get(number=week_number)
+                    
+                    filters['departure_weekday__number'] = week_number 
+
+                    #pop unwanted fields
+                    #filters.pop('booking_date')
+                    destination = filters.pop('origin')
+                    origin = filters.pop('destination')
+
+                    # push new filter
+                    filters['origin'] = origin
+                    filters['destination'] = destination
+
+                    print("returning_filters := ", filters)
+                    
+
+                #retrieve returning flights
+                #paginator = FlightCombinedPagination()
+                returning_flights = Flight.objects.filter(**filters)
+
+                if sort_by:
+
+                    if sort_by == 'PRICE':
+                        if seat_class == 'ECONOMY':
+                            flights = flights.order_by('economy_fare')
+                        elif seat_class == 'BUISNESS':
+                            flights = flights.order_by('buisness_fare')
+                        elif seat_class == 'FIRST_CLASS':
+                            flights = flights.order_by('first_class_fare')
+                    
+                    elif sort_by == 'ARRIVAL_TIME':
+                        flights = flights.order_by('arrival_time')
+                    
+                    elif sort_by == 'DEPARTURE_TIME':
+                        flights = flights.order_by('depart_time')
+                    
+                    elif sort_by == 'DURATION':
+                        flights = flights.order_by('duration')
+            
+                if returning_flights.exists():
+                    #paginated_returning_flights = paginator.paginate_queryset(returning_flights, request)
+                    returning_flight_serializer = FlightSerializer(returning_flights, many=True, context={'request': request})
+                else:
+                    paginated_returning_flights = None
+                    returning_flight_serializer = None
+
+
+                if departing_flight_serializer is None and returning_flight_serializer is None:
                     return Response({'message': {'Oops! None of flights match your query!!!'}}, status=status.HTTP_404_NOT_FOUND)
             else:
                 return Response(queryParamSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
             #return the response
-            serializer = FlightSerializer(paginated_flights, many=True, context={'request': request})
-            print("serializer Meta fields:= ", FlightSerializer.Meta.fields)
-            return paginator.get_paginated_response(serializer.data)
+            
+            if round_trip is True:
+                
+                data = {
+                    #"count": (len(paginated_flights) if paginated_flights else 0) + (len(paginated_returning_flights) if paginated_returning_flights else 0),
+                    "departing_flights": departing_flight_serializer.data if departing_flight_serializer is not None else None,
+                    "returning_flights": returning_flight_serializer.data if returning_flight_serializer is not None else None
+                }
+            else:
+                data = departing_flight_serializer.data
+            #print("serializer Meta fields:= ", FlightSerializer.Meta.fields)
+            
+            
+            return Response(data, status=status.HTTP_200_OK)
         
         else:
             flights = Flight.objects.all()
@@ -848,15 +919,9 @@ def update_booking(request):
         else:
             return Response({'message': 'Missing secret, request not Alllowed!'}, status=status.HTTP_404_NOT_FOUND)
 
-
-'''
-
-
-
  
 
-'''
-     pdf generation endpoint 
+ pdf generation endpoint 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def test_pdf(request, booking_ref):

@@ -179,7 +179,8 @@ class FlightSerializer(serializers.ModelSerializer):
 
 class FlightParamSerializer(serializers.Serializer):
 
-    #journey_type = serializers.ChoiceField
+    round_trip = serializers.BooleanField(default=False)
+    return_date = serializers.DateField(input_formats=['%d-%m-%Y'])
     stops = serializers.ChoiceField(choices=LAYOVER_STOPS)
     flight_number = serializers.CharField(max_length=6)
     airlines = serializers.ListField(child=serializers.CharField(), required=False)
@@ -202,8 +203,21 @@ class FlightParamSerializer(serializers.Serializer):
     
     def validate(self, attrs):
         seat_class = attrs.get('seat_class')
-        sort_by = attrs.get('sort_by')
+        
+        #check for return flight
+        round_trip = attrs.get('round_trip')
+        return_date = attrs.get('return_date')
+        booking_date = attrs.get('booking_date')
 
+        if round_trip and not return_date:
+            raise ValidationError("For returning flights, return date is neccesary!!!")
+
+        if booking_date and return_date:
+            if booking_date > return_date:
+                raise ValidationError("Return Date must be after booking date!!!")
+            
+            
+        sort_by = attrs.get('sort_by')
         if sort_by and sort_by == 'PRICE':
             if not seat_class:
                 raise ValidationError("seat_class  is must for ordering by price!!!")
