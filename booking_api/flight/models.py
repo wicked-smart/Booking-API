@@ -52,6 +52,17 @@ EXTRA_BAGGAGE_BOOKING_MODE = (
     ('AT_AIRPORT', 'At_Airport')
 )
 
+TRIP_TYPE = (
+    ('ROUND_TRIP', 'Round Trip'),
+    ('ONE_WAY', 'One Way')
+)
+
+SEPERATE_TICKET = (
+    ('YES', "Yes"),
+    ('NO', "No")
+)
+
+
 
 class User(AbstractUser):
 
@@ -148,10 +159,12 @@ class Booking(models.Model):
     extra_baggage_booking_mode = models.CharField(choices=EXTRA_BAGGAGE_BOOKING_MODE, blank=True, null=True)
     extra_baggage_price = models.FloatField(default=0.0)
     extra_check_in_baggage = models.FloatField(default=0.0)
-    round_trip = models.BooleanField(default=False)
-    return_flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="Bookings", blank=True, null=True)
-    return_flight_dep_date = models.DateField(blank=True, null=True)
-    return_flight_arriv_date = models.DateField(blank=True, null=True)
+    trip_type = models.CharField(choices=TRIP_TYPE, max_length=15, default='ONE WAY')
+    separate_ticket = models.CharField(choices=SEPERATE_TICKET, max_length=3, null=True, blank=True)
+    other_booking_ref=models.CharField(max_length=6, null=True, blank=True)
+    # return_flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="Bookings", blank=True, null=True)
+    # return_flight_dep_date = models.DateField(blank=True, null=True)
+    # return_flight_arriv_date = models.DateField(blank=True, null=True)
     
 
     def __str__(self):

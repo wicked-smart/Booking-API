@@ -459,12 +459,37 @@ def book_flight(request, flight_id):
     if request.method == 'POST':
 
         data = request.data
-
-        serializer = FlightBookingSerializer(data=data, context={'request': request, 'flight': flight})
-
-        if serializer.is_valid():
-            serializer.save()
+        serializer = None
+        #find tripe type and serialize according to it
+        trip_type = data.get("trip_type")
+        if trip_type is None:
+            return Response({"message": "trip_type missing !!"}, status=status.HTTP_400_BAD_REQUEST)
+        if trip_type == 'ONE_WAY':
+            serializer = FlightBookingSerializer(data=data, context={'request': request, 'flight': flight})
+        if trip_type == 'ROUND_TRIP':
+            returning_flight = data.get('return_flight')
+            if returning_flight is None:
+                return Response({"message": "returning flight is neccesary in round trip flight!!"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                return_flight = Flight.objects.get(pk=returning_flight)
+                ret_serializer = FlightBookingSerializer(
+                    data=data, 
+                    context={'request': request, 'flight': flight, 'return_flight':return_flight}
+                    )
+            except Flight.DoesNotExist:
+                return Response({'message': 'Returning Flight Does not exists!'}, status=status.HTTP_404_NOT_FOUND)
+            
+        if serializer and serializer.is_valid():
+            booking = serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
+        elif serializer is None:
+            #seperate tickets
+            if trip_type == 'ROUND_TRIP':
+                if ret_serializer.is_valid():
+                        booking,ret_booking = ret_serializer.save()
+                        return Response(ret_serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response(ret_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -660,7 +685,18 @@ def payments(request, booking_ref):
             return Response({'message': 'Booking status needs to be in PENDING state for payment to go through!!!'})
         
         # total fare 
-        total_fare = round(booking.total_fare)
+        trip_type = booking.trip_type
+        ret_booking = None 
+
+        if trip_type == 'ONE_WAY':
+            total_fare = round(booking.total_fare)
+        elif trip_type == 'ROUND_TRIP':
+            ret_booking_ref = booking.other_booking_ref
+            try:
+                ret_booking = Booking.objects.get(pk=ret_booking_ref)
+                total_fare = round(booking.total_fare) + round(ret_booking.total_fare)
+            except Booking.DoesNotExist:
+                return Response({"message": "returning booking of this ref does not exists!"}, status=status.HTTP_400_BAD_REQUEST)
 
         if total_fare == 0.0:
             return Response("{'message': 'amount must be greater than zero!!!'}")
@@ -670,20 +706,22 @@ def payments(request, booking_ref):
         paymentIntent = stripe.PaymentIntent.create(
             amount= total_fare * 100,
             currency='inr',
-             automatic_payment_methods={
+            automatic_payment_methods={
                 "enabled": True,
                 "allow_redirects": "never"
             },
             payment_method_options={'card':
-						{
-						'request_three_d_secure': 'any'
-						}
-					},
+                        {
+                        'request_three_d_secure': 'any'
+                        }
+                    },
             metadata = {
                 "booking_ref": booking.booking_ref
             }
 
         )
+        
+
 
         # retrieve payment_intent_id
         payment_intent_id = paymentIntent["id"]
@@ -697,8 +735,17 @@ def payments(request, booking_ref):
         #generate Ticket PDF
         ticket_pdf_filename = f"booking_ticket_{booking.booking_ref}.pdf"
 
+        if trip_type == 'ROUND_TRIP' and (booking.flight.airline != ret_booking.flight.airline):
+            ret_ticket_pdf_filename = f"retturn_booking_ticket_{ret_booking.booking_ref}.pdf"
+
+
+
         pdf_url = reverse('download_pdf', args=[booking_ref, "ticket", ticket_pdf_filename])
         print("pdf_url := ", pdf_url)
+
+        if trip_type == 'ROUND_TRIP' and (booking.flight.airline != ret_booking.flight.airline):
+            ret_pdf_url = reverse('download_pdf', args=[ret_booking.booking_ref, "ticket", ret_ticket_pdf_filename])
+            
 
         # prepare the response 
         response_return = {
@@ -706,6 +753,23 @@ def payments(request, booking_ref):
             "ticket_pdf_url": f"Your Ticket will be availalbe <a href='{pdf_url}'>here</a> once you have succesfully completed next_action of authenticating url !!",
             "next_action": "Click on the hook url with this response and ping GET endpoint for payment confirmation ",
             "url": confirm["next_action"]
+        }
+
+        if trip_type == 'ROUND_TRIP' and (booking.flight.airline != ret_booking.flight.airline):
+            response_return = {
+                "payemnt_intent_id": payment_intent_id,
+                "ticket_pdf_url": f"Your Ticket will be availalbe <a href='{pdf_url}'>here</a> once you have succesfully completed next_action of authenticating url !!",
+                "return_ticket_pdf_url": f"Your return ticket will be availalbe <a href='{ret_pdf_url}'>here</a> once you have succesfully completed next_action of authenticating url !!",
+                "next_action": "Click on the hook url with this response and ping GET endpoint for payment confirmation ",
+                "url": confirm["next_action"]
+           }
+        else:
+
+            response_return = {
+                "payemnt_intent_id": payment_intent_id,
+                "ticket_pdf_url": f"Your Ticket will be availalbe <a href='{pdf_url}'>here</a> once you have succesfully completed next_action of authenticating url !!",
+                "next_action": "Click on the hook url with this response and ping GET endpoint for payment confirmation ",
+                "url": confirm["next_action"]
         }
 
 
@@ -761,20 +825,50 @@ def stripe_webhook(request):
 
 
                 if booking.booking_status != 'PENDING':
-                    return Response({"message": "PENDING Not Allowed!"}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({"message": "booking status must be in PENDING state!"}, status=status.HTTP_404_NOT_FOUND)
+
+                trip_type = booking.trip_type
+                ret_booking = None
+
+                if trip_type == 'ROUND_TRIP':
+                    ret_booking_ref = booking.other_booking_ref
+                    try:
+                         ret_booking = Booking.objects.get(booking_ref=ret_booking_ref)
+                    except Booking.DoesNotExist:
+                         return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
+
+
+                    if booking.booking_status != 'PENDING' and ret_booking.booking_status != 'PENDING':
+                        return Response({"message": "booking status must be in PENDING state!"}, status=status.HTTP_404_NOT_FOUND)
 
 
                 payment_status = payment_intent.get("status")
                 payment_id = payment_intent.get("id")
 
-                if payment_status is not None:
+                if payment_status == "succeeded":
                     booking.booking_status = 'CONFIRMED'
                     booking.payment_status = 'SUCCEDED'
+                else:
+                    return Response({"message": "payment status is not `succeeded`"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                if trip_type == 'ROUND_TRIP':
+                    if payment_status == "succeeded":
+                        ret_booking.booking_status = 'CONFIRMED'
+                        ret_booking.payment_status = 'SUCCEDED'
+                    else:
+                      return Response({"message": "payment status is not `succeeded`"}, status=status.HTTP_400_BAD_REQUEST)
+                
 
                 if payment_id is not None:
                     booking.payment_ref = payment_id
-
+                
                 booking.save()
+
+                if trip_type == 'ROUND_TRIP':
+                    if payment_id is not None:
+                        ret_booking.payment_ref = payment_id
+                    ret_booking.save()
+
 
                 return Response({'message': 'booking successfully updated!'}, status=status.HTTP_200_OK)
             

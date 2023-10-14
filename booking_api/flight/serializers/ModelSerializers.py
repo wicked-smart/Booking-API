@@ -216,7 +216,7 @@ class FlightParamSerializer(serializers.Serializer):
             if booking_date > return_date:
                 raise ValidationError("Return Date must be after booking date!!!")
             
-            
+
         sort_by = attrs.get('sort_by')
         if sort_by and sort_by == 'PRICE':
             if not seat_class:
@@ -252,13 +252,17 @@ class PassengerSerializer(serializers.ModelSerializer):
 class FlightBookingSerializer(serializers.ModelSerializer):
 
     passengers = PassengerSerializer(many=True, required=True)
-    flight_dep_date = serializers.CharField(required=True, max_length=12)
+    flight_dep_date = serializers.CharField(required=False, max_length=12)
+    return_flight_dep_date = serializers.CharField(required=False, max_length=12)
+    trip_type = serializers.CharField(required=True, max_length=15) 
 
-            
+    #extra fields
+    return_flight = serializers.IntegerField(required=False)
+    return_flight_dep_date = serializers.CharField(required=False)      
 
     class Meta:
         model = Booking
-        fields = ['booking_ref', 'flight', 'payment_status', 'booking_status', 'booked_at' ,'flight_dep_date', 'flight_arriv_date', 'seat_class' , 'passengers', 'coupon_used','extra_baggage_booking_mode','extra_check_in_baggage', 'extra_baggage_price','coupon_code','coupon_discount' ,'total_fare' ]
+        fields = ['booking_ref', 'flight', 'payment_status', 'trip_type',  'booking_status', 'booked_at' ,'flight_dep_date', 'flight_arriv_date', 'return_flight', 'return_flight_dep_date', 'seat_class' , 'passengers', 'coupon_used','extra_baggage_booking_mode','extra_check_in_baggage', 'extra_baggage_price','coupon_code','coupon_discount' ,'total_fare', 'separate_ticket', 'other_booking_ref' ]
         extra_kwargs = {
             'seat_class': {'required': True},
             'flight_dep_date': {'required': True},
@@ -268,7 +272,13 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             'total_fare': {'required': False},
             'extra_baggage_booking_mode': {'required': True},
             'extra_baggage_price': {'required': False ,'read_only': True},
-            'extra_check_in_bagagge': {'required': False, 'read_only': True}
+            'extra_check_in_bagagge': {'required': False, 'read_only': True},
+            'trip_type': {'required': True},
+            'return_flight': {'required': False},
+            'return_flight_dep_date': {'required': False},
+            'separate_ticket': {'required': False},
+            'other_booking_ref': {'required': False}
+
         }
     
     def __init__(self, *args, **kwargs):
@@ -285,6 +295,8 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
         flight = self.context.get('flight')
         request = self.context.get('request')
+        returning_flight = self.context.get('return_flight')
+
 
         if request and request.method == 'PUT':
             
@@ -303,7 +315,6 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             return attrs
 
         date_str = attrs.get('flight_dep_date')
-
         date_obj = datetime.strptime(date_str, "%d-%m-%Y").date()
 
         if date_obj < datetime.today().date():
@@ -315,7 +326,34 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         if combined_datetime < datetime.now():
             raise ValidationError("Departure DateTime Cannot be Earlier than Current DateTime!")
 
+        # validate trip_type , returning_flight and returning_date
+        trip_type = attrs.get('trip_type')
+        return_flight = attrs.get('return_flight')
+        returning_flight_dep_date = attrs.get('return_flight_dep_date')
 
+        if trip_type is None:
+            raise ValidationError("trip_type field is required!!")
+        
+        if trip_type and trip_type == 'ROUND_TRIP':
+            if return_flight is None:
+                raise ValidationError("For ROUND_TRIP returning_flight is required!")
+            if returning_flight_dep_date is None:
+                raise ValidationError("For ROUND_TRIP returning_flight_dep_date is required!")
+            
+            ret_date_obj = datetime.strptime(returning_flight_dep_date, "%d-%m-%Y").date()
+            ret_departure_time = returning_flight.depart_time
+            combined_ret_datetime = datetime.combine(ret_date_obj, ret_departure_time)
+
+            if combined_ret_datetime <= combined_datetime:
+                raise ValidationError("Returning Flight Departure must be STRICTLY after Departing Flight DateTime!!")
+
+            #check for correct depature and arrival timings
+            depart_combined_datetime = datetime.combine(date_obj, flight.arrival_time)
+            ret_combined_datetime = datetime.combine(ret_date_obj, returning_flight.depart_time)
+            if ret_combined_datetime <= depart_combined_datetime:
+                raise ValidationError("Returning Flight must be deprting after departing flights arrival time!!")
+        
+            
         passengers = attrs.get('passengers')
 
         if len(passengers) > 20:
@@ -346,16 +384,136 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         if not match:
             raise ValidationError("Invalid Departure Date Format. Correct format is `dd[.-/]mm[./-]year ")
 
+        if trip_type == 'ROUND_TRIP':
+            match = date_pattern.match(returning_flight_dep_date)
+            if not match:
+                raise ValidationError("Invalid Departure Date Format. Correct format is `dd[.-/]mm[./-]year ")
+
         
         return attrs
 
     
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
+    def get_passengers_seats(self, booking_ref, depart_obj, flight):
+        try:
 
-        #print("reprentation := ", ret)
+            booking = Booking.objects.filter(booking_ref=booking_ref).first()
+            passengers  = booking.passengers.all()
+            print("passengers from booking call := ", passengers)
+            passengers_list = [] # new passengers list
+            for passenger in passengers:
+                
+                foo = {
+                    "first_name": passenger.first_name,
+                    "last_name": passenger.last_name,
+                    "gender": passenger.gender,
+                    "age": passenger.age,
+                    "age_category": passenger.type,
+                    "hand_baggage": passenger.hand_baggage,
+                    "check_in_baggage": passenger.check_in_baggage
+                    
+                }
+                    
+                seat = Seats.objects.filter(flight=flight, departure_date=depart_obj, passenger=passenger, is_booked=True).first()
+                #print("seat:= ", seat)
+                if not seat:
+                    foo['seat'] = "NOT_ALLOCATED"
+                else:
+                    foo['seat'] = seat.seat_no
+                    foo["seat_type"]= seat.seat_type 
+                    
+                passengers_list.append(foo)
+            
+            return passengers_list
+
+                
+        except Booking.DoesNotExist:
+            return None
+                    # get appropriate seats using booking_ref ....
+        
+    
+    
+    def to_representation(self, instance):
+
         request = self.context.get('request')
         flight = self.context.get('flight')
+        ret_flight = self.context.get('return_flight')
+
+        if isinstance(instance, tuple):
+            booking, ret_booking = instance
+            booking_data = super().to_representation(booking)
+            ret_booking_data = super().to_representation(ret_booking)
+
+            # insert flight timiings and passengers seats info , then return
+            if flight.airline  == ret_flight.airline:
+
+                booking_data.pop("separate_ticket")
+                booking_data.pop("other_booking_ref")
+                booking_data["flight_depart_time"] = flight.depart_time
+                booking_data["flight_arrival_time"] = flight.arrival_time
+
+                depart_date = booking_data["flight_dep_date"]
+                dep_passengers = self.get_passengers_seats(booking_data["booking_ref"],  depart_date, flight)
+                booking_data.pop("passengers")
+                if dep_passengers is None:
+                    booking_data["departure_error"] = "seats for departing passengers have not been allocated correctly!"
+                else:
+                    booking_data["passengers"] = dep_passengers
+                
+                # merge ret_booking info
+                booking_data["return_flight"] = ret_booking_data.pop("flight")
+                ret_depart_date = ret_booking_data.pop("flight_dep_date")
+                booking_data["return_flight_dep_date"] = ret_depart_date
+                booking_data["return_flight_arrival_date"] = ret_booking_data.pop("flight_arriv_date")
+                booking_data["flight_depart_time"] = ret_flight.depart_time
+                booking_data["flight_arrival_time"] = ret_flight.arrival_time
+                booking_data["return_booking_status"] = ret_booking_data.pop("booking_status")
+                booking_data["return_total_fare"] = ret_booking_data.pop("total_fare")
+
+                #get return booking passengers
+                ret_passengers = self.get_passengers_seats(ret_booking_data["booking_ref"],  ret_depart_date, ret_flight)
+                if ret_passengers is None:
+                    booking_data["return_error"] = "seats for returning passengers have not been allocated correctly!"
+                else:
+                    booking_data["return_passengers"] = ret_passengers
+
+                return booking_data
+            
+            else:
+                booking_data.pop("separate_ticket")
+                booking_data.pop("other_booking_ref")
+                booking_data["flight_depart_time"] = flight.depart_time
+                booking_data["flight_arrival_time"] = flight.arrival_time
+
+                #get passenegrs
+                depart_date = booking_data["flight_dep_date"]
+                dep_passengers = self.get_passengers_seats(booking_data["booking_ref"],  depart_date, flight)
+                booking_data.pop("passengers")
+                if dep_passengers is None:
+                    booking_data["departure_error"] = "seats for departing passengers have not been allocated correctly!"
+                else:
+                    booking_data["passengers"] = dep_passengers
+
+                #manage returning passengers
+                ret_booking_data.pop("separate_ticket")
+                ret_booking_data.pop("other_booking_ref")
+                ret_booking_data["flight_depart_time"] = ret_flight.depart_time
+                ret_booking_data["flight_arrival_time"] = ret_flight.arrival_time
+
+                #get passenegrs
+                depart_date = ret_booking_data["flight_dep_date"]
+                dep_passengers = self.get_passengers_seats(ret_booking_data["booking_ref"],  depart_date, flight)
+                ret_booking_data.pop("passengers")
+                if dep_passengers is None:
+                    ret_booking_data["departure_error"] = "seats for departing passengers have not been allocated correctly!"
+                else:
+                    ret_booking_data["passengers"] = dep_passengers
+                
+                return {"booking": booking_data, "return_booking": ret_booking_data}
+                
+        else:
+            ret = super().to_representation(instance)
+
+        print("representation := ", ret)
 
         #print("flight := ", flight)
 
@@ -376,45 +534,15 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             #print("departure-date := ", departure_date)
             depart_obj = datetime.strptime(departure_date, "%Y-%m-%d").date()
             booking_ref = ret.get('booking_ref')
-            try:
+            ret.pop("passengers")
+            passengers = self.get_passengers_seats(booking_ref, depart_obj, flight)
+            if passengers is None:
+                ret['error'] = 'Booking ref does not exists!'
+            else:
+                ret['passengers'] = passengers
 
-                booking = Booking.objects.filter(booking_ref=booking_ref).first()
-                passengers  = booking.passengers.all()
-                print("passengers from booking call := ", passengers)
-
-                ret.pop('passengers') # pop the passengers
-
-                #print("ret after popping passengers := ", ret)
-                passengers_list = [] # new passengers list
-                for passenger in passengers:
-                    
-                    foo = {
-                        "first_name": passenger.first_name,
-                        "last_name": passenger.last_name,
-                        "gender": passenger.gender,
-                        "age": passenger.age,
-                        "age_category": passenger.type,
-                        "hand_baggage": passenger.hand_baggage,
-                        "check_in_baggage": passenger.check_in_baggage
-                        
-                    }
-                     
-                    seat = Seats.objects.filter(flight=flight, departure_date=depart_obj, passenger=passenger, is_booked=True).first()
-                    #print("seat:= ", seat)
-                    if not seat:
-                        foo['seat'] = "NOT_ALLOCATED"
-                    else:
-                        foo['seat'] = seat.seat_no
-                        foo["seat_type"]= seat.seat_type 
-                        
-                    passengers_list.append(foo)
-                
-                ret['passengers'] = passengers_list
-
-                
-            except Booking.DoesNotExist:
-                raise ValidationError(f"Booking with {booking_ref} does not exists!!!")
-                # get appropriate seats using booking_ref ....
+            #if trip_type == 'ROUND_TRIP' and single ticket scenario, insert returning times (depart and arrival), fetch passengers
+            
         return ret 
 
     # seat allocation function 
@@ -441,47 +569,121 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                 seat.save()
                 return seat
         return None
-    
-    def create(self, validated_data):
-        
-        booking_ref = generate_hex_token()
-        flight = self.context.get('flight')
-        request = self.context.get('request')
-        seat_class = validated_data.get('seat_class')
 
-       
 
-        # Extract flight_dep_date and output arrival_dep_date 
-        departure_date_string = validated_data.get('flight_dep_date')
-        depart_datetime = datetime.strptime(departure_date_string, "%d-%m-%Y")
+    # get arrival date from departire date and corresponding flight
+    def get_arrival_date(self, departure_date_str, flight):
+        depart_datetime = datetime.strptime(departure_date_str, "%d-%m-%Y")
 
         depart_time = flight.depart_time
         arrival_time = flight.arrival_time
-
-        # Calculate the timedelta for depart_time and arrival_time
-        depart_timedelta = timedelta(hours=depart_time.hour, minutes=depart_time.minute, seconds=depart_time.second)
         arrival_timedelta = timedelta(hours=arrival_time.hour, minutes=arrival_time.minute, seconds=arrival_time.second)
 
         # Calculate the arrival_datetime by adding depart_timedelta to depart_datetime
         arrival_datetime = depart_datetime + arrival_timedelta
 
         # Extract the arrival date from arrival_datetime
-        arrival_date_obj = arrival_datetime.date()
+        arrival_date = arrival_datetime.date()
         depart_date = depart_datetime.date()
 
+        return depart_date, arrival_date
 
 
-        # Instantiate Booking object
-        booking = Booking.objects.create(
-                                         booking_ref=booking_ref,
-                                         flight=flight,
-                                         booked_by=request.user,
-                                         flight_dep_date=depart_date,
-                                         flight_arriv_date=arrival_date_obj,
-                                         seat_class=seat_class,
-                                        )
+    #create seats
+    def create_seats(self, flight, departure_date):
 
+        for i in range(1, 31):
+            for seat_col in range(ord('A'), ord('G')):
+                
+                seat_no = f"{i:02d}{chr(seat_col)}"
+
+                if chr(seat_col) == 'A' or chr(seat_col) == 'F':
+                    seat_type = 'WINDOW'
+                elif chr(seat_col) == 'B' or chr(seat_col) == 'E':
+                    seat_type = 'MIDDLE'
+                elif chr(seat_col) == 'C' or chr(seat_col) == 'D':
+                    seat_type = 'AISLE'
+                
+                Seats.objects.create(flight=flight, departure_date=departure_date, seat_no=seat_no, seat_type=seat_type)
+                    
+    
+    def create(self, validated_data):
         
+        
+        flight = self.context.get('flight')
+        request = self.context.get('request')
+        
+        seat_class = validated_data.get('seat_class')
+
+       #check for returning trip type
+        ret_flight = self.context.get('return_flight')
+        trip_type = validated_data.get('trip_type')
+        
+
+
+        # Extract flight_dep_date and output arrival_dep_date 
+        departure_date_string = validated_data.get('flight_dep_date')
+        
+        depart_date, arrival_date = self.get_arrival_date(departure_date_string, flight)
+
+        if trip_type == 'ROUND_TRIP':
+
+             # calculate return departure date and arrival  date
+            ret_flight_dep_date_str = validated_data.get('return_flight_dep_date')
+            ret_depart_date, ret_arrival_date = self.get_arrival_date(ret_flight_dep_date_str, ret_flight)
+
+
+        if trip_type == 'ONE_WAY': 
+        # Instantiate departing Booking object
+            booking_ref = generate_hex_token()
+            booking = Booking.objects.create(
+                                            booking_ref=booking_ref,
+                                            flight=flight,
+                                            booked_by=request.user,
+                                            flight_dep_date=depart_date,
+                                            flight_arriv_date=arrival_date,
+                                            seat_class=seat_class,
+                                            )
+
+        if trip_type == 'ROUND_TRIP':
+            dep_booking_ref = generate_hex_token()
+            dep_booking = Booking.objects.create(
+                                        booking_ref=dep_booking_ref,
+                                        flight=flight,
+                                        booked_by=request.user,
+                                        flight_dep_date=depart_date,
+                                        flight_arriv_date=arrival_date,
+                                        seat_class=seat_class,
+                                        trip_type='ROUND_TRIP'
+                                        )
+                
+        
+            ret_booking_ref = generate_hex_token()
+            ret_booking = Booking.objects.create(
+                                booking_ref=ret_booking_ref,
+                                flight=ret_flight,
+                                booked_by=request.user,
+                                flight_dep_date=ret_depart_date,
+                                flight_arriv_date=ret_arrival_date,
+                                seat_class=seat_class,
+                                trip_type='ROUND_TRIP'
+
+                )
+            
+            
+
+            if flight.airline != ret_flight.airline:
+                dep_booking.separate_ticket = 'YES'
+                ret_booking.separate_ticket = 'YES'
+
+                dep_booking.other_booking_ref = ret_booking_ref
+                ret_booking.other_booking_ref = dep_booking_ref
+            else:
+                dep_booking.separate_ticket = 'NO'
+                ret_booking.separate_ticket = 'NO'
+
+                
+
 
         #Add coupon code
         coupon_code = validated_data.get('coupon_code')
@@ -490,33 +692,40 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             booking.coupon_code = coupon_code
             booking.coupon_discount= 750
 
+            if trip_type == 'ROUND_TRIP':
+                dep_booking.coupon_used = True
+                dep_booking.coupon_code = coupon_code
+                dep_booking.coupon_discount= 750
+
+                ret_booking.coupon_used = True
+                ret_booking.coupon_code = coupon_code
+                ret_booking.coupon_discount= 750
+
         # SEAT ALLOTMENT LOGIC 
         seats = Seats.objects.filter(flight=flight, departure_date=depart_date, is_booked=False)
-        
         if not seats.exists():
-            seats_to_create = []
-            for i in range(1, 31):
-                for seat_col in range(ord('A'), ord('G')):
-                   
-                    seat_no = f"{i:02d}{chr(seat_col)}"
+            #seats_to_create = []
+            self.create_seats(flight, depart_date)
 
-                    if chr(seat_col) == 'A' or chr(seat_col) == 'F':
-                        seat_type = 'WINDOW'
-                    elif chr(seat_col) == 'B' or chr(seat_col) == 'E':
-                        seat_type = 'MIDDLE'
-                    elif chr(seat_col) == 'C' or chr(seat_col) == 'D':
-                        seat_type = 'AISLE'
-                    
-                    Seats.objects.create(flight=flight, departure_date=depart_date, seat_no=seat_no, seat_type=seat_type)
-                     
+
             # Use atomic transaction to speed up the bulk db creation
             #with transaction.atomic():
             #    Seats.objects.bulk_create(seats_to_create)
-    
+
+        if trip_type == 'ROUND_TRIP':
+            ret_seats = Seats.objects.filter(flight=ret_flight, departure_date=ret_depart_date, is_booked=False)
+            if not ret_seats.exists():
+            #seats_to_create = []
+               self.create_seats(ret_flight, ret_depart_date)
 
         # sort seats as per seat_type
         seats = list(seats)
         seats.sort(key=lambda seat: seat.seat_type)
+
+        if trip_type == 'ROUND_TRIP':
+            ret_seats = list(ret_seats)
+            ret_seats.sort(key=lambda seat: seat.seat_type)
+
 
         # get passengers and sort by seat_type
         passengers = validated_data.get('passengers')
@@ -525,6 +734,12 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         #print("passengers := ", passengers)
         if len(seats) < len(passengers):
             raise ValidationError(f"Only {len(seats)} seats available!! not enough seats for booking all the passengers..")
+
+        
+        if trip_type == 'ROUND_TRIP':
+            if len(ret_seats) < len(passengers):
+              raise ValidationError(f"Only {len(ret_seats)} returning seats available!! not enough seats for booking all the passengers..")
+
 
         # sort passenegrs on seat_type basis
         passengers.sort(key=lambda passenger: passenger["seat_type"])
@@ -551,12 +766,25 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                 extra_check_in_baggage += (passenger['check_in_baggage']-15.0) 
             #print("passenger after popping seat_type := ", passenger)
             
+            if trip_type == 'ONE_WAY':
+                booking = booking
+            elif trip_type == 'ROUND_TRIP':
+                booking = dep_booking
 
             allocated_seat = self.allocate_seat(booking, passenger, seats, preference)
-            
             if not allocated_seat:
                 allocated_seat = self.allocate_seat(booking, passenger, seats, 'ANY')  # Allocate any available seat
             
+            #seat allocation for returning passegers
+            if trip_type == 'ROUND_TRIP':
+                 allocated_seat = self.allocate_seat(ret_booking, passenger, ret_seats, preference)
+                 if not allocated_seat:
+                    allocated_seat = self.allocate_seat(ret_booking, passenger, ret_seats, 'ANY')  # Allocate any available seat
+
+                 ret_seats = Seats.objects.filter(flight=ret_flight, departure_date=ret_depart_date, is_booked=False)
+                 ret_seats = list(ret_seats)
+                 ret_seats.sort(key=lambda seat: seat.seat_type)
+
             # Update available seats after allocation
             seats = Seats.objects.filter(flight=flight, departure_date=depart_date, is_booked=False)
             seats = list(seats)
@@ -568,7 +796,9 @@ class FlightBookingSerializer(serializers.ModelSerializer):
     
         booking.extra_check_in_baggage = extra_check_in_baggage
 
-        
+        if trip_type == 'ROUND_TRIP' and flight.airline != ret_flight.airline:
+            ret_booking.extra_check_in_baggage = extra_check_in_baggage
+            dep_booking.extra_check_in_baggage = extra_check_in_baggage
         
 
         # Add total fare (base fare, GST, Discount coupon, Convenience Fee))
@@ -583,6 +813,20 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         elif seat_class == 'FIRST_CLASS':
             base_fare = flight.first_class_fare
             gst = 0.12 * base_fare
+        
+        if trip_type == 'ROUND_TRIP':
+            if seat_class == 'ECONOMY':
+                ret_base_fare = ret_flight.economy_fare
+                gst = 0.05 * ret_base_fare
+
+            elif seat_class == 'BUISNESS':
+                ret_base_fare = ret_flight.buisness_fare
+                gst = 0.12 * ret_base_fare 
+
+            elif seat_class == 'FIRST_CLASS':
+                ret_base_fare = ret_flight.first_class_fare
+                gst = 0.12 * ret_base_fare
+        
         
         
         convenience_fee = 300
@@ -605,7 +849,10 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         
         # add extra check in baggage booking mode INFO to the booking
         booking.extra_baggage_booking_mode = extra_baggage_booking_mode
-
+        if trip_type == 'ROUND_TRIP' and flight.airline != ret_flight.airline:
+            ret_booking.extra_baggage_booking_mode = extra_baggage_booking_mode
+            dep_booking.extra_baggage_booking_mode = extra_baggage_booking_mode
+        
         extra_check_in_baggage_price = 0.0
 
         if extra_baggage_booking_mode == 'AT_AIRPORT':
@@ -634,8 +881,11 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
         #print("total_fare from FlightBookingSerializer := ", no_of_passengers *(base_fare + gst) + convenience_fee - discount)
         booking.extra_baggage_price = extra_check_in_baggage_price
+        if trip_type == 'ROUND_TRIP' and flight.airline != ret_flight.airline:
+            ret_booking.extra_baggage_price = extra_check_in_baggage_price
+            dep_booking.extra_baggage_price = extra_check_in_baggage_price
 
-        booking.total_fare = round(non_infants *(base_fare + gst) 
+        total_fare = round(non_infants *(base_fare + gst) 
                                   + infants*(550+ 0.05*550)
                                   + convenience_fee
                                   + cute_charge
@@ -646,7 +896,32 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                                   + extra_check_in_baggage_price
                                   - discount)
 
-        #save booking object
-        booking.save()
+        if trip_type == 'ROUND_TRIP':
+            ret_total_fare = round(non_infants *(ret_base_fare + gst) 
+                                  + infants*(550+ 0.05*550)
+                                  + convenience_fee
+                                  + cute_charge
+                                  + rcs_provision
+                                  + aviation_security_fee
+                                  + passenger_service_fee
+                                  + user_developement_fee 
+                                  + extra_check_in_baggage_price
+                                  - discount)
 
-        return booking
+        if trip_type == 'ONE_WAY':
+            booking.total_fare = total_fare
+            booking.save()
+            return booking
+
+        if trip_type == 'ROUND_TRIP':
+
+            dep_booking.total_fare = total_fare
+            ret_booking.total_fare = ret_total_fare
+            dep_booking.save()
+            ret_booking.save()
+            return dep_booking, ret_booking
+
+            
+                
+    
+    
