@@ -751,7 +751,7 @@ def payments(request, booking_ref):
         response_return = {
             "payemnt_intent_id": payment_intent_id,
             "ticket_pdf_url": f"Your Ticket will be availalbe <a href='{pdf_url}'>here</a> once you have succesfully completed next_action of authenticating url !!",
-            "next_action": "Click on the hook url with this response and ping GET endpoint for payment confirmation ",
+            "next_action": "Click on the hok url with this response and ping GET endpoint for payment confirmation ",
             "url": confirm["next_action"]
         }
 
