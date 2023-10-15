@@ -693,13 +693,13 @@ def payments(request, booking_ref):
         elif trip_type == 'ROUND_TRIP':
             ret_booking_ref = booking.other_booking_ref
             try:
-                ret_booking = Booking.objects.get(pk=ret_booking_ref)
+                ret_booking = Booking.objects.get(booking_ref=ret_booking_ref)
                 total_fare = round(booking.total_fare) + round(ret_booking.total_fare)
             except Booking.DoesNotExist:
                 return Response({"message": "returning booking of this ref does not exists!"}, status=status.HTTP_400_BAD_REQUEST)
 
         if total_fare == 0.0:
-            return Response("{'message': 'amount must be greater than zero!!!'}")
+            return Response({'message': 'amount must be greater than zero!!!'},status=status.HTTP_400_BAD_REQUEST)
 
         
         # create stripe PaymentIntent Object, confirm the order with passing booking ref as meta data
@@ -736,7 +736,7 @@ def payments(request, booking_ref):
         ticket_pdf_filename = f"booking_ticket_{booking.booking_ref}.pdf"
 
         if trip_type == 'ROUND_TRIP' and (booking.flight.airline != ret_booking.flight.airline):
-            ret_ticket_pdf_filename = f"retturn_booking_ticket_{ret_booking.booking_ref}.pdf"
+            ret_ticket_pdf_filename = f"booking_ticket_{ret_booking.booking_ref}.pdf"
 
 
 

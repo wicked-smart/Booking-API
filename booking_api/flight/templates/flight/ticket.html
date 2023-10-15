@@ -69,8 +69,13 @@
                 <tr>
                     <th style="text-align: left">Booking Ref</th>
                     <td style="padding-left: 10px;">{{ booking.booking_ref }}</td>
-                    <th style="padding-left: 40px; max-width: 100px; text-align: left;">Booking Date and Time </th>
-                    <td style="white-space: nowrap;">{{ booking.booked_at }}</td>
+                    {% if ret_booking %}
+                        <th style="padding-left: 40px; max-width: 100px; text-align: left;">Return Booking Ref </th>
+                        <td style="white-space: nowrap;">{{ ret_booking.booking_ref }}</td>
+                    {% else %}
+                        <th style="padding-left: 40px; max-width: 100px; text-align: left;">Booking Date and Time </th>
+                        <td style="white-space: nowrap;">{{ booking.booked_at }}</td>
+                    {% endif %}
                 </tr>
                 <tr style="height: 10px;"></tr>
                 <tr>
@@ -90,6 +95,11 @@
                 <tr>
                     <th style="text-align: left">Status</th>
                     <td>{{ booking.booking_status }}</td>
+
+                    {% if ret_booking %}
+                        <th style="padding-left: 40px; max-width: 100px; text-align: left;">Booking Date and Time </th>
+                        <td style="white-space: nowrap;">{{ booking.booked_at }}</td>
+                    {% endif %}
             
                 </tr>
                 
@@ -99,7 +109,11 @@
         
         <br>  
          
-        <h2>Flight INFO</h2>
+        {% if ret_booking %}
+            <h2>Departing Flight INFO</h2>
+        {% else %}
+            <h2>Flight INFO</h2>
+        {% endif %}
 
         <table class="foobar" cellspacing="0">
             <thead>
@@ -134,10 +148,57 @@
         <div class="horizontal">
             <h3>{{duration}} {{ booking.flight.duration.formatted_duration  }} | {{ booking.flight.origin.name }}, {{ booking.flight.origin.code }} - {{ booking.flight.destination.name }}, {{ booking.flight.destination.code }} </h3>   
         </div>
+        <br>
+        <br>
 
+        
+        {% if ret_booking %}
+            <h2>Returning Flight INFO</h2>
+
+            <table class="foobar" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Departure </th>
+                        <th>Arrival </th>
+                        <th>From </th>
+                        <th style="padding-right: 20px;">To </th>
+                        <th style="padding-right: 20px;">Airline </th>
+                        <th style="padding-right: 20px;">Flight No. </th>
+                        <th>PNR No. </th>
+                    </tr>
+                    <tr>
+                        <th colspan="8"><hr></th>
+                    </tr>
+                    
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ ret_booking.flight_dep_date }} {{ ret_booking.flight.depart_time }} </td>
+                        <td style="padding-right: 20px;">{{ ret_booking.flight_arriv_date }} {{ ret_booking.flight.arrival_time }}</td>
+                        <td style="padding-right: 20px;">{{ ret_booking.flight.origin.city }} </td>
+                        <td style="padding-right: 20px;">{{ ret_booking.flight.destination.city }} </td>
+                        <td>{{ ret_booking.flight.airline }} </td>
+                        <td>{{ ret_booking.flight.flight_no }} </td>
+                        <td>{{ ret_booking.booking_ref }} </td>
+                    </tr>
+                </tbody>
+    
+            </table>
+
+            <br>
+            <div class="horizontal">
+                <h3>{{ret_duration}} {{ ret_booking.flight.duration.formatted_duration  }} | {{ ret_booking.flight.origin.name }}, {{ ret_booking.flight.origin.code }} - {{ ret_booking.flight.destination.name }}, {{ ret_booking.flight.destination.code }} </h3>   
+            </div>
+        {% endif %}
+
+        
         <br>
         <br>
-        <h2>Passenger Info</h2>
+        {% if ret_booking %}
+            <h2>Departing Passenger Info</h2>
+        {% else %}
+            <h2>Passnenger Info</h2>
+        {% endif %}
 
         <table class="foobar" cellspacing="0">
             <thead>
@@ -170,13 +231,45 @@
             </tbody>
         </table>
 
+        <br><br>
+        {% if ret_booking %}
+            <h2>Returning Passenger Info</h2>
+            <table class="foobar" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Passenger's Name</th>
+                        <th style="padding-left: 20px;">Gender</th>
+                        <th style="padding-left: 20px;">Age</th>
+                        <th style="padding-left: 20px;">Status</th>
+                        <th style="padding-left: 20px;">Seat No.</th>
+                        
+                    </tr>
+                    <tr>
+                        <th colspan="6"><hr/></th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+                    {% for passenger in ret_booking.passengers.all %}
+                    <tr>
+                        <td>{{ forloop.counter }}. {{ passenger.first_name }} {{ passenger.last_name }} </td>
+                        <td style="text-align: center;">{{ passenger.gender }} </td>
+                        <td style="text-align: center;">{{ passenger.age }} </td>
+                        <td style="text-align: center;">{{ booking.booking_status}} </td>
+                        <td style="text-align: center;">{{ passenger.seat_no}}</td>
+
+                    </tr>
+                    {% endfor %}
+                    
+                </tbody>
+            </table>
+        {% endif %}
         <!-- baggage INFO -->
 
         {% if total_hand_baggage != 0.0 and total_check_in_baggage != 0.0 %}
         <br>
             <h2>Passenger Baggage Information </h2>
-        
-            <br>
             <table cellspacing="0">
                 
                 <thead>
@@ -206,8 +299,14 @@
         <h2></h2>
         <br>
         <br> 
-        <h2>Fare Rules and Charges </h2>
+        {% if ret_booking %}
+            <h2>Departing Fare Rules and Charges </h2>
+        {% else %}
+             <h2>Fare Rules and Charges </h2>
+        {% endif %}
+
         <hr>
+
 
                 <table cellspacing="0">
                     <tbody>
@@ -332,7 +431,139 @@
         
                     </tbody>
                 </table>
-           
+                <br>
+                <br>
+                {% if ret_booking %}
+                    <h2>Returning Flight Fare and Charges</h2>
+                    <hr>
+
+
+                    <table cellspacing="0">
+                        <tbody>
+                            <tr>
+                                <td>Base Charge and Airplane Fuel Charge </td>
+                                
+                            </tr>
+                            <tr>
+                                <br/>
+                            </tr>
+                            
+                            {% if age_group_count.adults != 0 %}
+                                {% with adults=age_group_count.adults  ticket_price=ret_ticket_price %}
+                                <tr> 
+                                    <td style="padding-left: 20px;"> Adults ({{ adults }}x Rs. {{ticket_price|intcomma}} )</td>
+                                    <td style="white-space: nowrap;"> Rs. {{ ticket_price|multiply:adults|intcomma }} </td>
+                                </tr>
+                                {% endwith %}
+                            {% endif %}
+
+                            {% if age_group_count.children != 0 %}
+                                {% with children=age_group_count.children  ticket_price=tret_icket_price %}
+                                <tr>
+                                    <td style="padding-left: 20px;"> Children ({{ children }}x Rs. {{ticket_price|intcomma}} )</td>
+                                    <td style="white-space: nowrap;"> Rs. {{ ticket_price|multiply:children|intcomma }} </td>
+                                </tr>
+                                {% endwith %}
+                            {% endif %}
+
+                            {% if age_group_count.infants != 0 %}
+                                {% with infants=age_group_count.adults  ticket_price=ret_ticket_price %}
+                                <tr>
+                                    <td style="padding-left: 20px;"> Infants ({{ infants }}x Rs. {{550|intcomma}} )</td>
+                                    <td> Rs. {{ ticket_price|multiply:children|intcomma }} </td>
+                                </tr>
+                                {% endwith %}
+                            {% endif %}
+            
+                            <tr>
+                                <td colspan="4"> <hr/></td>
+                            </tr>
+            
+                            <tr>
+                                <td>Taxes and Fees</td>
+                            </tr>
+                            <tr >
+                                <td style="padding-left: 20px;">Cute Charge </td>
+                                <td>Rs. 50.00</td>
+                            </tr>
+                            <tr >
+                                <td style="padding-left: 20px;">RCS Provision </td>
+                                <td>Rs. 50.00</td>
+                            </tr>
+                            <tr >
+                                <td style="padding-left: 20px;">Aviation Security Fee </td>
+                                <td>Rs. 236.00</td>
+                            </tr>
+                            <tr >
+                                <td style="padding-left: 20px;">Passenger Service Fee </td>
+                                <td>Rs. 91.00</td>
+                            </tr>
+                            <tr>
+                                <td style="padding-left: 20px;">User Developement Fee </td>
+                                <td>Rs. 61.00</td>
+                            </tr>
+                            <tr >
+                                <td style="padding-left: 20px;">Convenience Fee </td>
+                                <td>Rs. 300.00</td>
+                            </tr>
+                            
+                            {% with adults=age_group_count.adults children=age_group_count.children infants=age_group_count.infants %}
+                                {% if ret_booking.seat_class == 'ECONOMY' %}
+                                    {% calculate_gst_total adults children infants ret_ticket_price 0.05 as gst_total %}
+                                    <tr>
+                                        <td style="padding-left: 20px;">GST @ 5% on Total Base Fare </td>
+                                        <td style="white-space: nowrap;">Rs. {{ gst_total|floatformat:"2"|intcomma }}</td>
+                                    </tr>
+                                {% elif booking.seat_class == 'BUISNESS' or booking.seat_class == 'FIRST_CLASS' %}
+                                    {% calculate_gst_total adults children infants ret_ticket_price 0.12 as gst_total %}
+                                    <tr>
+                                        <td style="padding-left: 20px;">GST @ 12% on Total Base Fare </td>
+                                        <td style="white-space: nowrap;">Rs. {{ gst_total|floatformat:"2"|intcomma }}</td>
+                                    </tr>
+                                {% endif %}
+                            {% endwith %}
+
+
+                        {% if ret_booking.extra_check_in_baggage != 0.0 %}
+                            <tr>
+                                <td colspan="4"><hr/></td>    
+                            </tr>
+                            <tr>
+                                <td>
+                                    Extra baggage charges
+                                </td>
+                                
+                            </tr>
+
+                            <tr>
+                                {% if ret_booking.extra_baggage_booking_mode  == 'AT_AIRPORT' %}
+                                    <td style="padding-left: 20px">Extra baggage price ( @550.0/Kg)</td>
+                                    <td style="white-space: nowrap;">Rs. {{ booking.extra_baggage_price|intcomma }}  </td>
+
+                                {% elif ret_booking.extra_baggage_booking_mode  == 'PRE_BOOKING' %}
+                                    <td style="padding-left: 20px">Extra baggage price </td>
+                                    <td style="white-space: nowrap;">Rs. {{ booking.extra_baggage_price|intcomma }}</td>
+                                
+                                {% endif %}
+                            </tr>
+                        {% endif %}
+                        
+                        <tr>
+                            <td><br/></td>
+                        </tr>
+                        <tr>
+                            <td colspan="4"><hr></td>
+                        </tr>
+                        <tr>
+                            <td>Grand total </td>
+                            <td style="white-space: nowrap;"> <strong>Rs. {{ ret_booking.total_fare|floatformat:"2"|intcomma }}</strong>  </td>
+                        </tr>
+            
+                        </tbody>
+                    </table>
+                    
+                {% endif %}
+
         
                 <div style="margin: 15px auto;">
                     <br>

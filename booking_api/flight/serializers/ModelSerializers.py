@@ -516,6 +516,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
         print("representation := ", ret)
 
         #print("flight := ", flight)
+        # GET /bookings/<str:booking_ref>   write to handdle this case
 
         if request and ( request.method == 'POST' or request.method == 'GET' ) :
 
@@ -669,8 +670,9 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                                 trip_type='ROUND_TRIP'
 
                 )
-            
-            
+
+            ret_booking.other_booking_ref = dep_booking_ref
+            dep_booking.other_booking_ref = ret_booking_ref           
 
             if flight.airline != ret_flight.airline:
                 dep_booking.separate_ticket = 'YES'

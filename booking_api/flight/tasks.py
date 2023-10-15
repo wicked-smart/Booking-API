@@ -98,14 +98,43 @@ def generate_ticket_pdf(booking_ref):
         total_hand_baggage += passenger.hand_baggage
         total_check_in_baggage += passenger.check_in_baggage
 
-    context = {
-        'booking': booking,
-        "duration": duration,
-        "age_group_count": age_group_count,
-        "ticket_price": ticket_price,
-        "total_hand_baggae": total_hand_baggage,
-        "total_check_in_baggage": total_check_in_baggage
-        }
+    
+    trip_type = booking.trip_type
+
+    if trip_type == 'ROUND_TRIP' and booking.separate_ticket == 'NO':
+        other_booking_ref = booking.other_booking_ref
+        ret_booking = Booking.objects.get(booking_ref=other_booking_ref)
+        # calculating ticket price
+        seat_class = ret_booking.seat_class
+
+        if seat_class == 'ECONOMY':
+            ret_ticket_price = ret_booking.flight.economy_fare
+        elif seat_class == 'BUISNESS':
+            ret_ticket_price = ret_booking.flight.buisness_fare
+        elif seat_class == 'FIRST_CLASS':
+            ret_ticket_price = ret_booking.flight.first_class_fare
+    
+        context = {
+            'booking': booking,
+            'ret_booking': ret_booking,
+            "duration": duration,
+            "ret_duration": format_duration(ret_booking.flight.duration),
+            "age_group_count": age_group_count,
+            "ticket_price": ticket_price,
+            "ret_ticket_price": ret_ticket_price,
+            "total_hand_baggae": total_hand_baggage,
+            "total_check_in_baggage": total_check_in_baggage
+            }
+    else:
+        context = {
+            'booking': booking,
+            "duration": duration,
+            "age_group_count": age_group_count,
+            "ticket_price": ticket_price,
+            "total_hand_baggae": total_hand_baggage,
+            "total_check_in_baggage": total_check_in_baggage
+            }
+
 
     rendered_template = template.render(context)
     #print("rendered_template := ", rendered_template)
@@ -115,6 +144,8 @@ def generate_ticket_pdf(booking_ref):
 
     #save ticket in MEDIA_ROOT
     pdf_filename = f"booking_ticket_{booking.booking_ref}.pdf"
+    
+
 
     pdf_path = os.path.join(settings.MEDIA_ROOT, f"tickets/{pdf_filename}")
     with open(pdf_path, 'wb') as pdf_file:
