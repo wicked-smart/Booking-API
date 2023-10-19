@@ -542,6 +542,32 @@ def download_pdf(request, booking_ref, pdf_type, pdf_filename):
             response_message = "The PDF is not available yet. Please check back later."
             return Response({"message": response_message}, status=202)
 
+#find cancellation charge
+def get_cancellation_charge(booking):
+        #calculate cancellation charge on the basis of time delta between current and booking datetimes
+        departure_date = booking.flight_dep_date
+        departure_time = booking.flight.depart_time
+
+        departure_datetime = datetime.combine(departure_date, departure_time)
+        
+        diff =  departure_datetime - datetime.now()
+        diff_in_hrs = round(diff.total_seconds() / 3600, 2)
+
+        if diff_in_hrs <= 2:
+            return None
+        
+        elif diff_in_hrs > 2 and diff_in_hrs <= 72:
+            cancellation_charge = 3500
+
+        elif diff_in_hrs > 72 and diff_in_hrs <= 168:
+            cancellation_charge = 3000
+        
+        elif diff_in_hrs > 168:
+            cancellation_charge = 0
+        
+        return cancellation_charge
+
+
 # GET, PUT any particular booking using booking_ref
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
@@ -564,57 +590,186 @@ def bookings(request, booking_ref):
         print("booking := ", booking)
         if serializer.is_valid():
             
-            #cancel the ticket
-            booking.booking_status= 'CANCELED'
+            if booking.trip_type == 'ONE_WAY' or (booking.trip_type == 'ROUND_TRIP' and  booking.separate_ticket == "YES"):
+                #cancel the ticket
+                booking.booking_status= 'CANCELED'
 
-            try:
-                    total_fare = booking.total_fare
-                    if total_fare == 0.0:
-                        return Response({"message": "Total Fare can't be equal to zero!!!"})
-                    
-                    cancellation_charge = 0
-
-                    #calculate cancellation charge on the basis of time delta between current and booking datetimes
-                    departure_date = booking.flight_dep_date
-                    departure_time = booking.flight.depart_time
-
-                    departure_datetime = datetime.combine(departure_date, departure_time)
-                    
-                    diff =  departure_datetime - datetime.now()
-                    diff_in_hrs = round(diff.total_seconds() / 3600, 2)
-
-                    if diff_in_hrs <= 2:
-                        return Response({"message": "tickets cannot be cancelled less than 2 hours before departure time!!"})
-                    
-                    elif diff_in_hrs > 2 and diff_in_hrs <= 72:
-                        cancellation_charge = 3500
-
-                    elif diff_in_hrs > 72 and diff_in_hrs <= 168:
-                        cancellation_charge = 3000
-                    
-                    elif diff_in_hrs > 168:
+                try:
+                        total_fare = booking.total_fare
+                        if total_fare == 0.0:
+                            return Response({"message": "Total Fare can't be equal to zero!!!"})
+                        
                         cancellation_charge = 0
 
-                    amount = round(total_fare - cancellation_charge) * 100
-                    stripe.Refund.create(
-                        payment_intent=booking.payment_ref,
-                        amount = amount,  # partially refundable
-                        metadata={
-                            "booking_ref": booking_ref
-                        }
-                    )
+                        #calculate cancellation charge on the basis of time delta between current and booking datetimes
+                        cancellation_charge = get_cancellation_charge(booking)
+                        if cancellation_charge == None:
+                            return Response({"message": "tickets cannot be cancelled less than 2 hours before departure time!!"})
 
-                        
-                    pdf_url = reverse('download_pdf', args=[booking_ref, "refund", f"refund_receipt_{booking_ref}.pdf"])
-                    print("pdf_url := ", pdf_url)
-                    return Response({"message": f"PDF is being generated. You can download it <a href='{pdf_url}'>here</a> once it's ready."}, status=status.HTTP_200_OK)
-                
+                        amount = round(total_fare - cancellation_charge) * 100
+                        stripe.Refund.create(
+                            payment_intent=booking.payment_ref,
+                            amount = amount,  # partially refundable
+                            metadata={
+                                "booking_ref": booking_ref
+                            }
+                        )
 
-                    #return Response({"message": "Refund is yet not complete yet..check out later!!!"}, status=status.HTTP_404_NOT_FOUND)
+                            
+                        pdf_url = reverse('download_pdf', args=[booking_ref, "refund", f"refund_receipt_{booking_ref}.pdf"])
+                        print("pdf_url := ", pdf_url)
+                        return Response({"message": f"PDF is being generated. You can download it <a href='{pdf_url}'>here</a> once it's ready."}, status=status.HTTP_200_OK)
                     
-            except stripe.error.StripeError as e:
-                return Response({'message': f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+                        #return Response({"message": "Refund is yet not complete yet..check out later!!!"}, status=status.HTTP_404_NOT_FOUND)
+                        
+                except stripe.error.StripeError as e:
+                    return Response({'message': f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            elif booking.trip_type == 'ROUND_TRIP' and  booking.separate_ticket == "NO":
+                cancellation_type = data.get("cancellation_type") 
+                if cancellation_type is None:
+                    return Response({"message": "For same airline round trip tickets, cancellation type must be clearly mentioned !!"}, status=status.HTTP_400_BAD_REQUEST)
+
+                if cancellation_type == 'DEPARTING':
+                    booking.booking_status= 'CANCELED'
+
+                    try:
+                        total_fare = booking.total_fare
+                        if total_fare == 0.0:
+                            return Response({"message": "Total Fare can't be equal to zero!!!"})
+                        
+                        cancellation_charge = 0
+
+                        #calculate cancellation charge on the basis of time delta between current and booking datetimes
+                        cancellation_charge = get_cancellation_charge(booking)
+                        if cancellation_charge == None:
+                            return Response({"message": "tickets cannot be cancelled less than 2 hours before departure time!!"})
+
+                        amount = round(total_fare - cancellation_charge) * 100
+                        stripe.Refund.create(
+                            payment_intent=booking.payment_ref,
+                            amount = amount,  # partially refundable
+                            metadata={
+                                "booking_ref": booking_ref
+                            }
+                        )
+
+                            
+                        pdf_url = reverse('download_pdf', args=[booking_ref, "refund", f"refund_receipt_{booking_ref}.pdf"])
+                        print("pdf_url := ", pdf_url)
+                        return Response({"message": f"PDF is being generated. You can download it <a href='{pdf_url}'>here</a> once it's ready."}, status=status.HTTP_200_OK)
+                    
+
+                            #return Response({"message": "Refund is yet not complete yet..check out later!!!"}, status=status.HTTP_404_NOT_FOUND)
+                            
+                    except stripe.error.StripeError as e:
+                        return Response({'message': f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+                elif cancellation_type == 'RETURNING':
+                    
+                    try:
+                        print("ret booking ref:= ", booking.other_booking_ref)
+                        ret_booking = Booking.objects.get(booking_ref=booking.other_booking_ref)
+                        print("other ret_booking ref := ", ret_booking.other_booking_ref)
+                        print("ret_booking ref:= ", ret_booking)
+                        ret_booking.booking_status = "CANCELED"
+
+                        total_fare = ret_booking.total_fare
+                        print("total_fare := ", total_fare)
+                        if total_fare == 0.0:
+                            return Response({"message": "Total Fare can't be equal to zero!!!"})
+                        
+                        cancellation_charge = 0
+
+                        #calculate cancellation charge on the basis of time delta between current and booking datetimes
+                        cancellation_charge = get_cancellation_charge(ret_booking)
+                        if cancellation_charge == None:
+                            return Response({"message": "tickets cannot be cancelled less than 2 hours before departure time!!"})
+
+                        amount = round(total_fare - cancellation_charge) * 100
+                        stripe.Refund.create(
+                            payment_intent=ret_booking.payment_ref,
+                            amount = amount,  # partially refundable
+                            metadata={
+                                "booking_ref": ret_booking.booking_ref
+                            }
+                        )
+
+                            
+                        pdf_url = reverse('download_pdf', args=[ret_booking.booking_ref, "refund", f"refund_receipt_{ret_booking.booking_ref}.pdf"])
+                        print("pdf_url := ", pdf_url)
+                        return Response({"message": f"PDF is being generated. You can download it <a href='{pdf_url}'>here</a> once it's ready."}, status=status.HTTP_200_OK)
+                    
+
+                    except stripe.error.StripeError as e:
+                        return Response({'message': f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
+                
+                elif cancellation_type == 'BOTH':
+                    try:
+                        ret_booking_ref = booking.other_booking_ref
+                        ret_booking = Booking.objects.get(booking_ref=ret_booking_ref)
+
+                        if booking.booking_status != "CONFIRMED" and ret_booking.booking_status != "CONFIRMED":
+                            return Response({"message": "For BOTH cancellation type, departing and returning both must be confirmed!!!"})
+                        
+                        #departing booking cancellation
+                        total_fare = booking.total_fare
+                        if total_fare == 0.0:
+                            return Response({"message": "Total Fare can't be equal to zero!!!"})
+                        
+                        cancellation_charge = 0
+
+                        #calculate cancellation charge on the basis of time delta between current and booking datetimes
+                        cancellation_charge = get_cancellation_charge(booking)
+                        if cancellation_charge == None:
+                            return Response({"message": "tickets cannot be cancelled less than 2 hours before departure time!!"})
+
+                        amount = round(total_fare - cancellation_charge) * 100
+                        stripe.Refund.create(
+                            payment_intent=booking.payment_ref,
+                            amount = amount,  # partially refundable
+                            metadata={
+                                "booking_ref": booking_ref
+                            }
+                        )
+
+                            
+                        dep_pdf_url = reverse('download_pdf', args=[booking_ref, "refund", f"refund_receipt_{booking_ref}.pdf"])
+
+                        #returning booking cancellation
+                        total_fare = ret_booking.total_fare
+                        if total_fare == 0.0:
+                            return Response({"message": "Total Fare can't be equal to zero!!!"})
+                        
+                        cancellation_charge = 0
+
+                        #calculate cancellation charge on the basis of time delta between current and booking datetimes
+                        cancellation_charge = get_cancellation_charge(ret_booking)
+                        if cancellation_charge == None:
+                            return Response({"message": "tickets cannot be cancelled less than 2 hours before departure time!!"})
+
+                        amount = round(total_fare - cancellation_charge) * 100
+                        stripe.Refund.create(
+                            payment_intent=ret_booking.payment_ref,
+                            amount = amount,  # partially refundable
+                            metadata={
+                                "booking_ref": ret_booking.booking_ref
+                            }
+                        )
+
+                            
+                        ret_pdf_url = reverse('download_pdf', args=[ret_booking.booking_ref, "refund", f"refund_receipt_{ret_booking.booking_ref}.pdf"])
+                       # print("pdf_url := ", pdf_url)
+                        return Response({"message": f"PDF is being generated. You can download departing refund receipt <a href='{dep_pdf_url}'>here</a> and returning refund receipt <a href='{dep_pdf_url}'>here</a>  once it's ready."}, status=status.HTTP_200_OK)
+                    
+
+                    except stripe.error.StripeError as e:
+                        return Response({'message': f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
 
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -49,6 +49,12 @@ SEAT_TYPE = (
     ('MIDDLE', 'Middle')
 )
 
+CANCELLATION_TYPE  = (
+    ('BOTH', 'Both'),
+    ('DEPARTING', 'Departing'),
+    ('RETURNING', 'Returning')
+)
+
 class AirportSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -258,11 +264,12 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
     #extra fields
     return_flight = serializers.IntegerField(required=False)
-    return_flight_dep_date = serializers.CharField(required=False)      
+    return_flight_dep_date = serializers.CharField(required=False)
+    cancellation_type = serializers.CharField(required=False, max_length=10)      
 
     class Meta:
         model = Booking
-        fields = ['booking_ref', 'flight', 'payment_status', 'trip_type',  'booking_status', 'booked_at' ,'flight_dep_date', 'flight_arriv_date', 'return_flight', 'return_flight_dep_date', 'seat_class' , 'passengers', 'coupon_used','extra_baggage_booking_mode','extra_check_in_baggage', 'extra_baggage_price','coupon_code','coupon_discount' ,'total_fare', 'separate_ticket', 'other_booking_ref' ]
+        fields = ['booking_ref', 'flight', 'payment_status', 'trip_type',  'booking_status', 'booked_at' ,'flight_dep_date', 'flight_arriv_date','cancellation_type' ,'return_flight', 'return_flight_dep_date', 'seat_class' , 'passengers', 'coupon_used','extra_baggage_booking_mode','extra_check_in_baggage', 'extra_baggage_price','coupon_code','coupon_discount' ,'total_fare', 'separate_ticket', 'other_booking_ref' ]
         extra_kwargs = {
             'seat_class': {'required': True},
             'flight_dep_date': {'required': True},
@@ -277,7 +284,8 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             'return_flight': {'required': False},
             'return_flight_dep_date': {'required': False},
             'separate_ticket': {'required': False},
-            'other_booking_ref': {'required': False}
+            'other_booking_ref': {'required': False},
+            'cancellation_type': {'required': False}
 
         }
     
@@ -311,6 +319,11 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             
             if booking.booking_status == 'CANCELED' or booking.booking_status == 'PENDING':
                 raise ValidationError("Not a Valid Call !!!")
+            
+            cancellation_type = attrs.get("cancellation_type")
+            if booking.trip_type == 'ROUND_TRIP' and booking.separate_ticket == 'NO':
+                    if cancellation_type is None:
+                        raise ValidationError("While cancelling for tickets from same airline, cancellation type is mandatory! ")
             
             return attrs
 
