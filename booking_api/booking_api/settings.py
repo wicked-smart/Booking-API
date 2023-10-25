@@ -12,26 +12,39 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+import secrets
+import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+IS_HEROKU_APP = "DYNO" in os.environ and not "CI" in os.environ
 
+if not IS_HEROKU_APP:
+    load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-y6wmqsro#wth598s8jz0zw1(m0)36jyqs%1d*@su)*1+rw8o&q'
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    default=secrets.token_urlsafe(nbytes=64),
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS =  ['*']
+if IS_HEROKU_APP:
+    ALLOWED_HOSTS = ["*"]
+else:
+    ALLOWED_HOSTS = []
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    "whitenoise.runserver_nostatic",
     'flight',
     'rest_framework',
     'django.contrib.admin',
@@ -45,6 +58,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -77,15 +91,36 @@ WSGI_APPLICATION = 'booking_api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'HOST': os.environ.get('DB_HOST'),
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
+if IS_HEROKU_APP:
+    # In production on Heroku the database configuration is derived from the `DATABASE_URL`
+    # environment variable by the dj-database-url package. `DATABASE_URL` will be set
+    # automatically by Heroku when a database addon is attached to your Heroku app. See:
+    # https://devcenter.heroku.com/articles/provisioning-heroku-postgres
+    # https://github.com/jazzband/dj-database-url
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True,
+        ),
     }
-}
+else:
+     # When running locally in development or in CI, a sqlite database file will be used instead
+     # to simplify initial setup. Longer term it's recommended to use Postgres locally too.
+     DATABASES = {
+     'default': {
+         'ENGINE': 'django.db.backends.postgresql',
+         'HOST': os.environ.get('DB_HOST'),
+         'NAME': os.environ.get('DB_NAME'),
+         'USER': os.environ.get('DB_USER'),
+         'PASSWORD': os.environ.get('DB_PASSWORD'),
+     }
+ }
+
+
+
 
 
 # Password validation
@@ -128,11 +163,18 @@ STATIC_ROOT = BASE_DIR / 'static'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'flight/static/media'
 
+STORAGES = {
+    # Enable WhiteNoise's GZip and Brotli compression of static assets:
+    # https://whitenoise.readthedocs.io/en/latest/django.html#add-compression-and-caching-support
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+WHITENOISE_KEEP_ONLY_HASHED_FILES = True 
 AUTH_USER_MODEL = 'flight.User'
 
 #rest framework default settings
@@ -160,3 +202,5 @@ CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL', 'redis://redis:6379/0')  # I
 CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+CSRF_TRUSTED_ORIGIN = ["https://flight-boooking-api-430fc914eb13.herokuapp.com"]

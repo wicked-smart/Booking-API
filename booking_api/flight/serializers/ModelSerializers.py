@@ -324,7 +324,7 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             if booking.trip_type == 'ROUND_TRIP' and booking.separate_ticket == 'NO':
                     if cancellation_type is None:
                         raise ValidationError("While cancelling for tickets from same airline, cancellation type is mandatory! ")
-            
+                    
             return attrs
 
         date_str = attrs.get('flight_dep_date')

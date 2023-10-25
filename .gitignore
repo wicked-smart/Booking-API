@@ -6,3 +6,5 @@ static/
 .env
 pdfs/
 *.sqlite3
+fixtures/
+db.json

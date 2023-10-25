@@ -185,8 +185,6 @@ class Layover(models.Model):
     
 
 
-    	
-    	
 class Seats(models.Model):
     
     id = models.BigAutoField(primary_key=True) 

@@ -964,7 +964,7 @@ def stripe_webhook(request):
                 return JsonResponse({"message": f"Webhook signature verification failed! with endpoint_secret {endpoint_secret}"}, status=400)
 
         # Handle the event
-        if event and event.type == 'payment_intent.succeeded':
+        if event and event["type"] == 'payment_intent.succeeded':
             payment_intent = event['data']['object']  # contains a stripe.PaymentIntent
             print('Payment for {} succeeded'.format(payment_intent['amount']))
             
@@ -1031,11 +1031,11 @@ def stripe_webhook(request):
                 print('⚠️  Metadata attribute not found in payment_intent object')
                 return JsonResponse({"message": 'Metadata attribute not found in payment_intent object'}, status=400)       
 
-        elif event.type == 'payment_intent.created':
+        elif event["type"] == 'payment_intent.created':
             return JsonResponse({'message': 'payemnt intent created succesfully!'}, status=200)
             # Handle the attached payment method event here
 
-        elif event.type == 'charge.refunded':
+        elif event["type"] == 'charge.refunded':
             refund_object = event['data']['object']
             print("Event charge.refund succeeded....")
 
