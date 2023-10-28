@@ -5,10 +5,9 @@ services:
     - postgres-data:/var/lib/postgresql/data
     ports:
     - "5433:5432"
-    environment:
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=prem
+    env_file:
+      - .env
+
 
   web:
     build: ./booking_api/
@@ -16,15 +15,8 @@ services:
     - ./booking_api:/app
     ports:
     - "8000:8000"
-    environment:
-    - DB_HOST=db
-    - DB_USER=prem
-    - DB_PASSWORD=postgres
-    - DB_NAME=postgres 
-    - STRIPE_WEBHOOK_SECRET=whsec_KhG1qA8cTG9kdNYZjaj7nr0IVUuC0xFy
-    - DJANGO_SECRET_KEY=django-insecure-y6wmqsro#wth598s8jz0zw1(m0)36jyqs%1d*@su)*1+rw8o&q
-    - AWS_ACCESS_KEY_ID=AKIAQDTSPAAR75KPGKW6
-    - AWS_SECRET_ACCESS_KEY=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
+    env_file:
+      - .env
     command: >
       sh -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
 
@@ -48,8 +40,8 @@ services:
     image: wernight/ngrok
     ports:
       - "4040:4040"  # Ngrok web interface port
-    environment:
-      - NGROK_AUTHTOKEN='r3wDdpmLoPXFL8HTU91_5SFcWY8GsdWgaQBHJnPNW'
+    env_file:
+      - .env
     command: ["ngrok", "http", "web:8000"]
     depends_on:
       - web
@@ -65,15 +57,8 @@ services:
       dockerfile: Dockerfile.celery  # Create a Dockerfile for your Celery worker configuration
     volumes:
     - ./booking_api:/app
-    environment:
-      - DB_HOST=db
-      - DB_USER=prem
-      - DB_PASSWORD=postgres
-      - DB_NAME=postgres
-      - REDIS_URL=redis://redis:6379/0  # Redis connection URL
-      - AWS_ACCESS_KEY_ID=AKIAQDTSPAAR75KPGKW6
-      - AWS_SECRET_ACCESS_KEY=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
-
+    env_file:
+      - .env
     depends_on:
       - db
       - redis
