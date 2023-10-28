@@ -27,6 +27,9 @@ from django.template import Context
 from .tasks import *
 from celery.result import AsyncResult
 import json
+import boto3
+from io import BytesIO
+import requests
 
 
 
@@ -521,10 +524,12 @@ def download_pdf(request, booking_ref, pdf_type, pdf_filename):
             
             try:
                 with open(pdf_path, 'rb') as pdf_file:
+                    print("pdf is being read..from views.py !!!!")
                     response = HttpResponse(pdf_file.read(), content_type='application/pdf')
                     response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
                     return response
             except FileNotFoundError:
+                print("pdf exists := ", os.path.exists(pdf_path))
                 response_message = "The PDF is not available yet. Please check back later."
                 return Response({"message": response_message}, status=status.HTTP_202_ACCEPTED)
         
@@ -1269,5 +1274,60 @@ def testing_celery(request):
 
 
 '''
+
+@api_view(['GET'])
+def test_pdf_gen(request):
+    pdf_options = {
+        'page-size': 'Letter',
+        'margin-top': '0.75in',
+        'margin-right': '0.75in',
+        'margin-bottom': '0.75in',
+        'margin-left': '0.75in',
+    }
+
+    template = get_template('flight/index.html')
+    rendered_template = template.render()
+    pdf = pdfkit.from_string(rendered_template, False, pdf_options)
+    pdf_filename = "test_pdf.pdf"
+    pdf_buffer = BytesIO(pdf)
+
+    s3 = boto3.client('s3', region_name='ap-south-1')
+
+
+    s3_bucket_name = 'flight-booking-bucket'
+    s3_key = "test_file.pdf"
+
+
+    s3.upload_fileobj(pdf_buffer, s3_bucket_name, s3_key)
+
+    presigned_url = s3.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': s3_bucket_name, 'Key': s3_key},
+        ExpiresIn=3600
+    )
+
+    try:
+        # Use requests to download the PDF file from the pre-signed URL
+        response = requests.get(presigned_url)
+
+        if response.status_code == 200:
+            # Set the content type to PDF and a desired filename
+            content_type = "application/pdf"
+            filename = "downloaded.pdf"  # You can set a default filename
+
+            # Set the content type and disposition for the response
+            response = HttpResponse(content=response.content, content_type=content_type)
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+            return response
+        else:
+            return HttpResponse("Failed to download the PDF file from the pre-signed URL.", status=500)
+
+    except Exception as e:
+        return HttpResponse(f"Error: {str(e)}", status=500)
+
+    
+
+    
 
 

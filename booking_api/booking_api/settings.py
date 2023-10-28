@@ -38,7 +38,7 @@ DEBUG = True
 if IS_HEROKU_APP:
     ALLOWED_HOSTS = ["*"]
 else:
-    ALLOWED_HOSTS = []
+    ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -203,4 +203,4 @@ CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
-CSRF_TRUSTED_ORIGIN = ["https://flight-boooking-api-430fc914eb13.herokuapp.com"]
+#CSRF_TRUSTED_ORIGINS = ["https://flight-boooking-api-430fc914eb13.herokuapp.com"]

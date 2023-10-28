@@ -144,11 +144,19 @@ def generate_ticket_pdf(booking_ref):
 
     #save ticket in MEDIA_ROOT
     pdf_filename = f"booking_ticket_{booking.booking_ref}.pdf"
-    
+    print("pdf filename := ", pdf_filename)
 
 
     pdf_path = os.path.join(settings.MEDIA_ROOT, f"tickets/{pdf_filename}")
-    with open(pdf_path, 'wb') as pdf_file:
-        pdf_file.write(pdf)
+    print("pdf_path := ", pdf_path)
+    try:
+        with open(pdf_path, 'wb') as pdf_file:
+            pdf_file.write(pdf)
+            print("PDF successfully saved at", pdf_path)
+            foo = os.path.exists(pdf_path)
+            print("pdf exists :- ", foo)
+    except Exception as e:
+        print("Error while saving PDF:", str(e))
+        
     
     #return pdf_filename

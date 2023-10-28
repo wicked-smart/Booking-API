@@ -20,6 +20,7 @@ urlpatterns = [
     path('logout', views.logoutt, name="logout"),
     #path('testing_celery', views.testing_celery, name='celery'),
     path('webhook/', views.stripe_webhook, name='stripe_webhook'),
+    path('test-pdf', views.test_pdf_gen, name='test_pdf_gen')
 
 ]
 
