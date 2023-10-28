@@ -2,11 +2,11 @@
 
 
 ## Quick Introduction
-    A Flight Booking REST API that let users search and book flight tickets (one-way/round-trip) across 1000+ Domestic and Interntional airports and different seat classes (Economy/Buisness/First class ) in 3-step (search, book and make payments , receive ticket in PDFs). 
+* A Flight Booking REST API that let users search and book flight tickets (one-way/round-trip) across 1000+ Domestic and Interntional airports and different seat classes (Economy/Buisness/First class ) in 3-step (search, book and make payments , receive ticket in PDFs). 
 
 
 ## Infrastructure setup
-    The API runs on docker compose having separate container for web (django), db (postgres), redis(redis as broker and cache) , worker(celery) and ngrok(ngrok).
+* The API runs on docker compose having separate container for web (django), db (postgres), redis(redis as broker and cache) , worker(celery) and ngrok(ngrok).
 
 ## Features and Notes
 *  Users get their API Key after they sign-up/register succesfully
