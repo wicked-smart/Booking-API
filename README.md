@@ -10,6 +10,9 @@
 
     ![containers](images/containers.drawio.png)
 
+* docker compose build session
+    ![compose build](images/demo.svg)
+
 ## Features and Notes
 *  Users get their API Key after they sign-up/register succesfully
 * Allow users to search flights using 11+ filters like departure date, return date, flight number, origin city, airlines, flight duration, price etc. with response customised as per journey type (one-way/round-trip).
