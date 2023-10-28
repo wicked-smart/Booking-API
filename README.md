@@ -7,6 +7,7 @@
 
 ## Infrastructure setup
 * The API runs on docker compose having separate container for web (django), db (postgres), redis(redis as broker and cache) , worker(celery) and ngrok(ngrok).
+    ![containers](images/containers.drawio.png)
 
 ## Features and Notes
 *  Users get their API Key after they sign-up/register succesfully
