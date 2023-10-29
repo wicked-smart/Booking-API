@@ -42,7 +42,7 @@
 
 ## Future Work
 
-* Optimise ORM queries/ use select_related and prefetch_related or maybe use raw sql queries to lower the overall response times 
+* Optimise ORM queries/ use **select_related** and **prefetch_related** or maybe use raw sql queries to lower the overall response times 
 * ‌Ability to add custom debit and credit cards as payment methods and do live payments
 * Allow users to query on Stops and Layovers  
 *  Also, Add feature to book multi-city flights
@@ -53,7 +53,12 @@
 
 ## How to Run and Test Locally
 
-1. git clone https://github.com/wicked-smart/Flight-Booking-API.git
+For this project to run locally, you need to install [docker](https://docs.docker.com/engine/install/) and [docker-compose](https://docs.docker.com/compose/install/).
+
+After installing , clone this repo
+> git clone https://github.com/wicked-smart/Flight-Booking-API.git
+> cd Flight-Booking-API
+
 2. sudo docker compose build -d
 3. go to http://localhost:4040, find ngrok UUID and paste it in your stripe test API webhook settngs with url <uuid>/webhook
 4. check documentation to understand all the endpoints 
