@@ -11,7 +11,13 @@
     ![containers](images/containers.drawio.png)
 
 * docker compose build session
+
     ![compose build](images/demo.svg)
+
+
+    ![test](images/test.svg)
+
+
 
 ## Features and Notes
 *  Users get their API Key after they sign-up/register succesfully
