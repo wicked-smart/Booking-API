@@ -56,8 +56,8 @@
 For this project to run locally, you need to install [docker](https://docs.docker.com/engine/install/) and [docker-compose](https://docs.docker.com/compose/install/).
 
 After installing , clone this repo
-> git clone https://github.com/wicked-smart/Flight-Booking-API.git
-> cd Flight-Booking-API
+$ git clone https://github.com/wicked-smart/Flight-Booking-API.git
+$ cd Flight-Booking-API
 
 2. sudo docker compose build -d
 3. go to http://localhost:4040, find ngrok UUID and paste it in your stripe test API webhook settngs with url <uuid>/webhook
