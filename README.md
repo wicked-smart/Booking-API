@@ -40,10 +40,10 @@
 
 ## Future Work
 
-* Optimise ORM queries/ use **select_related** and **prefetch_related** or maybe use raw sql queries to lower the overall response times 
-* ‌Ability to add custom debit and credit cards as payment methods and do live payments
-* Allow users to query on Stops and Layovers  
-*  Also, Add feature to book multi-city flights
+* Optimise ORM queries/ use **select_related** and **prefetch_related** or maybe use **raw sql queries** to lower the overall response times 
+* ‌Ability to add custom **debit and credit cards** as payment methods and do live payments
+* Allow users to query on **Stops and Layovers** 
+*  Also, Add feature to book **multi-city** flights
 
 ## Live Demo
 
