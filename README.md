@@ -65,6 +65,18 @@ Then, simplly run the docker compose service to build and spin docker compose se
 $ docker-compose -f docker-compose.prod.yml up -d --build 
 ```
 
-Now visit  http://localhost:4040, find ngrok UUID and paste it in your stripe test API webhook settngs with url <uuid>/webhook
+Your api is up and running on http://localhost:8000/v1/flight_api/ .
+
+Now visit  http://localhost:4040, find ngrok UUID and paste it in your stripe test API webhook settngs with url **<uuid>/webhook**
+
+You can verify if it's working properly by runining and then looking the logs
+```
+$ docker-compose -f docker-compose.prod.yml logs -f
+```
+
+You can spin down the docker compose service by runing
+```
+$ docker-compose -f docker-compose.prod.yml down -v
+```
 
  Check documentation to understand all the endpoints and launch postman to test different API endpoints 
