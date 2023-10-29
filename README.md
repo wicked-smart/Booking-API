@@ -15,6 +15,8 @@
     ![compose build](images/demo.svg)
 
 
+    ![test](images/test.svg)
+
 
 
 ## Features and Notes
@@ -49,4 +51,10 @@
 
 ## Link to Documentation
 
-## How to Run Locally
+## How to Run and Test Locally
+
+1. git clone https://github.com/wicked-smart/Flight-Booking-API.git
+2. sudo docker compose build -d
+3. go to http://localhost:4040, find ngrok UUID and paste it in your stripe test API webhook settngs with url <uuid>/webhook
+4. check documentation to understand all the endpoints 
+5. launch postman and test different API endpoints 
