@@ -48,7 +48,8 @@
 
 ## Live Demo
 
-![demo gif](images/output2.gif)
+ [![Video]](https://user-images.githubusercontent.com/46626672/278861072-4dcaaa6d-e23b-4da5-817c-329c5fe003eb.mp4)
+
 
 ## Link to Documentation
 
