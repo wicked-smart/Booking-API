@@ -634,10 +634,10 @@ def bookings(request, booking_ref):
             elif booking.trip_type == 'ROUND_TRIP' and  booking.separate_ticket == "NO":
                 cancellation_type = data.get("cancellation_type") 
                 if cancellation_type is None:
-                    return Response({"message": "For same airline round trip tickets, cancellation type must be clearly mentioned !!"}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"message": "For same airline round trip tickets, cancellation_type field  must have either BOTH, DEPARTING or RETURNING  clearly mentioned !!"}, status=status.HTTP_400_BAD_REQUEST)
 
                 if cancellation_type == 'DEPARTING':
-                    booking.booking_status= 'CANCELED'
+                    #booking.booking_status= 'CANCELED'
 
                     try:
                         total_fare = booking.total_fare
@@ -678,7 +678,7 @@ def bookings(request, booking_ref):
                         ret_booking = Booking.objects.get(booking_ref=booking.other_booking_ref)
                         print("other ret_booking ref := ", ret_booking.other_booking_ref)
                         print("ret_booking ref:= ", ret_booking)
-                        ret_booking.booking_status = "CANCELED"
+                        #ret_booking.booking_status = "CANCELED"
 
                         total_fare = ret_booking.total_fare
                         print("total_fare := ", total_fare)
@@ -1057,7 +1057,7 @@ def stripe_webhook(request):
 
 
                 if booking.booking_status != 'CONFIRMED':
-                    return Response({"message": "Not eligible for refund!! "}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({"message": "Not eligible for refund!! "}, status=status.HTTP_400_BAD_REQUEST)
 
 
                 refund_status = refund_object.get("status")

@@ -17,11 +17,12 @@
 
 
 
+
 ## Features and Notes
 *  Users get their API Key after they sign-up/register succesfully
 * Allow users to search flights using 11+ filters like departure date, return date, flight number, origin city, airlines, flight duration, price etc. with response customised as per journey type (one-way/round-trip).
 * Users can book the  flight ticket with passenger data like departure date, flight (departing and/or returning ), seat class etc. and receive **booking_ref** in return
-*  Make payments using the **booking_ref** , validate the returned url and click on the response link to receive ticket PDF
+*  Make payments using the **booking_ref** , validate the returned hooks url and click on the response link to receive ticket PDF
 * Received PDF ticket contains information of the booking date and time, flight , journey type, baggage information, passenger allocated seats, fare rules and charges and finally , boarding instruction
 * For round trip flight, if the return journey airline is different than departing one, separate tickets are generated while, if having same airline case..single ticket is generated.
 * All these PDFs generation tasks are offloaded to celery workers to process it asynchronously and at scale.
@@ -41,11 +42,13 @@
 ## Future Work
 
 * Optimise ORM queries/ use **select_related** and **prefetch_related** or maybe use **raw sql queries** to lower the overall response times 
-* ‌Ability to add custom **debit and credit cards** as payment methods and do live payments
-* Allow users to query on **Stops and Layovers** 
+* ‌Ability to add custom debit and credit cards as payment methods and do live payments
+* Allow users to query on Stops and Layovers 
 *  Also, Add feature to book **multi-city** flights
 
 ## Live Demo
+
+    ![demo gif](images/output2.gif)
 
 ## Link to Documentation
 

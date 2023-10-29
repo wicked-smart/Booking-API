@@ -317,13 +317,25 @@ class FlightBookingSerializer(serializers.ModelSerializer):
             if not booking_status or  booking_status != 'CANCELED':
                 raise ValidationError("Invalid booking_status update  !!")
             
-            if booking.booking_status == 'CANCELED' or booking.booking_status == 'PENDING':
-                raise ValidationError("Not a Valid Call !!!")
-            
-            cancellation_type = attrs.get("cancellation_type")
-            if booking.trip_type == 'ROUND_TRIP' and booking.separate_ticket == 'NO':
-                    if cancellation_type is None:
+            if booking.trip_type == 'ROUND_TRIP' and booking.separate_ticket == "NO":
+                ret_booking = Booking.objects.get(booking_ref=booking.other_booking_ref)
+                cancellation_type = attrs.get("cancellation_type")
+                if cancellation_type is None:
                         raise ValidationError("While cancelling for tickets from same airline, cancellation type is mandatory! ")
+                if cancellation_type == "DEPARTING":
+                    if booking.booking_status == 'CANCELED' or booking.booking_status == 'PENDING':
+                        raise ValidationError('Departing booking_status not in valid state for this call!!!')
+                elif cancellation_type == "RETURNING":
+                    if ret_booking.booking_status == 'CANCELED' or ret_booking.booking_status == 'PENDING':
+                        raise ValidationError('returning booking_status not in valid state for this call!!!')
+                elif cancellation_type == "BOTH":
+                    if booking.booking_status == 'CANCELED' or booking.booking_status == 'PENDING':
+                        raise ValidationError('Departing booking_status not in valid state for this call!!!')
+                    if ret_booking.booking_status == 'CANCELED' or ret_booking.booking_status == 'PENDING':
+                        raise ValidationError('returning booking_status not in valid state for this call!!!')
+            else:
+                if booking.booking_status == 'CANCELED' or booking.booking_status == 'PENDING':
+                    raise ValidationError("booking_status is in invalid state !!!")
                     
             return attrs
 
