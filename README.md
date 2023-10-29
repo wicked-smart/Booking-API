@@ -1,7 +1,4 @@
 
-
-https://github.com/wicked-smart/Flight-Booking-API/assets/46626672/4dcaaa6d-e23b-4da5-817c-329c5fe003eb
-
 # Flight-Booking-API
 
 
