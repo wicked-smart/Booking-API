@@ -15,8 +15,6 @@
     ![compose build](images/demo.svg)
 
 
-    ![test](images/test.svg)
-
 
 
 ## Features and Notes
