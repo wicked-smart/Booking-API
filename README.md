@@ -48,7 +48,7 @@
 
 ## Live Demo
 
-    ![demo gif](images/output2.gif)
+![demo gif](images/output2.gif)
 
 ## Link to Documentation
 
