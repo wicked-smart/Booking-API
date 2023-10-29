@@ -59,7 +59,12 @@ $ git clone https://github.com/wicked-smart/Flight-Booking-API.git
 $ cd Flight-Booking-API/
 
 ```
-2. sudo docker compose build -d
-3. go to http://localhost:4040, find ngrok UUID and paste it in your stripe test API webhook settngs with url <uuid>/webhook
-4. check documentation to understand all the endpoints 
-5. launch postman and test different API endpoints 
+
+Then, simplly run the docker compose service to build and spin docker compose service
+```
+$ docker-compose -f docker-compose.prod.yml up -d --build 
+```
+
+Now visit  http://localhost:4040, find ngrok UUID and paste it in your stripe test API webhook settngs with url <uuid>/webhook
+
+ Check documentation to understand all the endpoints and launch postman to test different API endpoints 
