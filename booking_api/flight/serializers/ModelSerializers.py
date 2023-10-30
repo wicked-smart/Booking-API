@@ -525,13 +525,13 @@ class FlightBookingSerializer(serializers.ModelSerializer):
                 ret_booking_data["flight_arrival_time"] = ret_flight.arrival_time
 
                 #get passenegrs
-                depart_date = ret_booking_data["flight_dep_date"]
-                dep_passengers = self.get_passengers_seats(ret_booking_data["booking_ref"],  depart_date, flight)
+                return_date = ret_booking_data["flight_dep_date"]
+                ret_passengers = self.get_passengers_seats(ret_booking_data["booking_ref"],  return_date, ret_flight)
                 ret_booking_data.pop("passengers")
-                if dep_passengers is None:
+                if ret_passengers is None:
                     ret_booking_data["departure_error"] = "seats for departing passengers have not been allocated correctly!"
                 else:
-                    ret_booking_data["passengers"] = dep_passengers
+                    ret_booking_data["passengers"] = ret_passengers
                 
                 return {"booking": booking_data, "return_booking": ret_booking_data}
                 

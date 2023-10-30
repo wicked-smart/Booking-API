@@ -611,7 +611,8 @@ def bookings(request, booking_ref):
                         if cancellation_charge == None:
                             return Response({"message": "tickets cannot be cancelled less than 2 hours before departure time!!"})
 
-                        amount = round(total_fare - cancellation_charge) * 100
+                        amount = round(total_fare - cancellation_charge) * 100 #
+                        print("booking_ref being passed to refund stripe := ", booking_ref)
                         stripe.Refund.create(
                             payment_intent=booking.payment_ref,
                             amount = amount,  # partially refundable
@@ -1048,16 +1049,17 @@ def stripe_webhook(request):
                 booking_ref = refund_object['metadata'].get('booking_ref')
                 receipt_url = refund_object['receipt_url']
 
-                print("receipt_url := ",receipt_url)
+                print("today's booking ref received := ",booking_ref)
 
                 try:
                     booking = Booking.objects.get(booking_ref=booking_ref)
                 except Booking.DoesNotExist:
                     return Response({"message": "booking ref is invalid!"}, status=status.HTTP_404_NOT_FOUND)
 
+                print("today's booking status := ", booking.booking_status) ##
 
                 if booking.booking_status != 'CONFIRMED':
-                    return Response({"message": "Not eligible for refund!! "}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"message": "Testing refund  eligible for refund!! "}, status=status.HTTP_400_BAD_REQUEST)
 
 
                 refund_status = refund_object.get("status")

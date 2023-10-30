@@ -46,6 +46,7 @@
 * ‌Ability to add custom debit and credit cards as payment methods and do live payments
 * Allow users to query on Stops and Layovers 
 *  Also, Add feature to book **multi-city** flights
+* Fix the very strange bug of 400 BAD REQUEST on cancelling returning ticket of ROUND_TRIP flight (reason being refunds webhook event data containing same booking_ref for both DEPARTING and RETURNING journey type!)
 
 ## Live Demo
 
