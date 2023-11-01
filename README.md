@@ -86,3 +86,8 @@ $ docker-compose -f docker-compose.prod.yml down -v
 ```
 
  Check documentation to understand all the endpoints and launch postman to test different API endpoints 
+
+
+## Deploying on Heorku
+
+![docker build](images/demo_output.svg)
