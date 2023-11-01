@@ -50,7 +50,11 @@
 
 ## Live Demo
 
- [![Video]](https://user-images.githubusercontent.com/46626672/278861072-4dcaaa6d-e23b-4da5-817c-329c5fe003eb.mp4)
+ [![Video]](https://github.com/wicked-smart/Flight-Booking-API/assets/46626672/d8caf614-9dae-467e-b777-e225344bf5af)
+
+
+
+
 
 
 ## Link to Documentation
