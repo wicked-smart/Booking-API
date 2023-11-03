@@ -57,6 +57,40 @@
 
 ## Link to Documentation
 
+
+## Deploying to Heorku
+
+Deploying to heroku using its container registry and not heroku.yml.
+
+1. Login to heroku container 
+```
+$ heroku container:login -a APP_NAME
+```
+2. Rename Dockerfile to Dockerfile.web and Dcokerfile.celery to Dockerfile.worker , then recursively push to the registry
+
+```
+$ sudo heroku container:push --recursive -a APP_NAME
+```
+![docker build](images/demo_output.svg)
+
+3. After it is succesfully built and pushed ,we release the web and worker containers to heroku using herokurelease command
+
+```
+$ sudo herou container:release web worker -a APP_NAME
+```
+
+4. Now, we will dump the fixtures into app's fixtures directory , update settings.py file to include remote db'd credentials and then load the data.
+
+```
+$ cd booking_api/
+$ python3 manage.py dumpdata --indent 2 > flight/fixtures/db.json
+$ python3 manage.py loaddata -v 3 flight/fixtures/db.json
+```
+
+![loaddata output](images/fixture.png)
+
+
+
 ## How to Run and Test Locally
 
 For this project to run locally, you need to install [docker](https://docs.docker.com/engine/install/) and [docker-compose](https://docs.docker.com/compose/install/).
@@ -88,36 +122,4 @@ $ docker-compose -f docker-compose.prod.yml down -v
 ```
 
  Check documentation to understand all the endpoints and launch postman to test different API endpoints 
-
-
-## Deploying on Heorku
-
-Deploying to heroku using its container registry and not heroku.yml.
-
-1. Login to heroku container 
-```
-$ heroku container:login -a APP_NAME
-```
-2. Rename Dockerfile to Dockerfile.web and Dcokerfile.celery to Dockerfile.worker , then recursively push to the registry
-
-```
-$ sudo heroku container:push --recursive -a APP_NAME
-```
-![docker build](images/demo_output.svg)
-
-3. After it is succesfully built and pushed ,we release the web and worker containers to heroku using herokurelease command
-
-```
-$ sudo herou container:release web worker -a APP_NAME
-```
-
-4. Now, we will dump the fixtures into app's fixtures directory , update settings.py file to include remote db'd credentials and then load the data.
-
-```
-$ cd booking_api/
-$ python3 manage.py dumpdata --indent 2 > flight/fixtures/db.json
-$ python3 manage.py loaddata -v 3 flight/fixtures/db.json
-```
-
-![loaddata output](images/fixture.png)
 
