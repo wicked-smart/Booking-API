@@ -148,10 +148,12 @@ endpoints :=
 
 
 * **/logout**
-    - Allowed Method: **GET**
+    - Allowed Method: **POST**
+
     
     * **POST**
     - {{BASE_URL}}/logout
+    
 
     * Responses
         - 200 (**logged out successfully**)
