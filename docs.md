@@ -3,10 +3,10 @@
 BASE_URL := **https://flight-booking-rest-api-355b8ab4795a.herokuapp.com/v1/flight_api/**
 
 endpoints := 
-* /login
+* **/login**
     - allowed methods = POST
 
-    * POST
+    * **POST**
         - {{BASE-URL}}/login
         - body parameters 
             * username (**required**) 
