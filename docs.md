@@ -16,7 +16,7 @@ endpoints :=
                 - type: string
                 - description: password 
             
-            sample request body :- 
+            sample request body : 
                 ```
                 {
                     "username": "admin",
@@ -26,7 +26,8 @@ endpoints :=
 
         - responses
             * 200 (**succesfully logged in**)
-                - returns csrfToken and sessionId which needs to passed with every endpoint
+                - returns csrfToken and sessionId which needs to passed with every endpoint.
+
                 sample response body :- 
                     ```
                     {
