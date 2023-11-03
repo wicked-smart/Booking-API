@@ -4,7 +4,7 @@ BASE_URL := **https://flight-booking-rest-api-355b8ab4795a.herokuapp.com/v1/flig
 
 endpoints := 
 * **/login**
-    - allowed methods = POST
+    - allowed methods = *POST*
 
     * **POST**
         - {{BASE-URL}}/login
@@ -15,12 +15,34 @@ endpoints :=
             * password (**required**)
                 - type: string
                 - description: password 
+            
+            sample body:- 
+                ```
+                {
+                    "username": "admin",
+                    "password": "123"
+                }
+                ```
+
         - responses
             * 200 (**succesfully logged in**)
                 - returns csrfToken and sessionId which needs to passed with every endpoint
+                sample response body :- 
+                    ```
+                    {
+                        "message": "succesfully logged in"
+                    }
+                    ```
+
             * 400 (**Bad Request**)
                 - returns appropriate field error message 
-            * 500 (**Some error from app side**)
+            * 401 (**Unauthorized**)
+                - returns appropriate error message
+            * 500 (**Error internally from app side**)
                 - returns the raised exception message
 
-* /register 
+* **/register**
+
+* **/logout**
+
+* 
