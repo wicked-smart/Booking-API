@@ -16,7 +16,7 @@ endpoints :=
                 - type: string
                 - description: password 
             
-            sample body:- 
+            sample request body :- 
                 ```
                 {
                     "username": "admin",
