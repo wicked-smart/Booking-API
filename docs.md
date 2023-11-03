@@ -153,7 +153,7 @@ endpoints :=
     
     * **POST**
     - {{BASE_URL}}/logout
-    
+
 
     * Responses
         - 200 (**logged out successfully**)
@@ -161,4 +161,172 @@ endpoints :=
         - 400 (**Bad Request**)
             * Bad request message
 
-* 
+
+
+* **/flights**
+    - Allowed Methods: **GET**
+
+    - GET
+        - {{BASE_URL}}/flights
+        - Header Params
+            * X-CSRFToken
+                - type: string
+                - description: csrf token value returned after logging in 
+                - example: 3CwkDICL51KCKCF3QbIflWlXvDiMN55S
+
+        - Query Parameters.
+            * round_trip
+                - type: boolean
+                - description: state whether journey is round_trip type
+
+            * origin
+                - type: string
+                - description: city of origin
+                - max length: 50
+            
+            * destination
+                - type: string 
+                - description: destination city
+                - max length: 50
+            
+            * flight_number
+                - type: string 
+                - description: Flight Number of the flight
+                - max length: 6
+            
+            * booking_date
+                - type: string 
+                - description: Flight Booking Date (date in indian format)
+                - exmaple: '12-11-2023'
+            
+            * return_date
+                - type: string 
+                - description: Flight return date (Date in Indian format)
+                - example: '18-09-2023'
+            
+            * seat_class
+                - type: string
+                - desciption: seat class of the seat (One of the following value ECONOMY, BUISNESS, PREMIUM_ECONOMY )
+                - max length: 10
+            
+            * airlines
+                - type: string
+                - description: Name of the Airline
+                - max length: 50
+                - example: Spice Jet, Indigo etc.
+
+            * departure_timing
+                - type: string 
+                - description: Departure Time of the Flight
+            
+            * price
+                - type: float
+                - desciption: Minimum price of the ticket
+            
+            - Responses
+                * 200 (**successful request**)
+                    - if no query params specified, returns paginated data of all the flights in the database
+                    sample response 
+                    ```
+                    {               
+                    "count": 1607,
+                    "next": "http://flight-booking-rest-api-355b8ab4795a.herokuapp.com/v1/flight_api/flights?page=2",
+                    "previous": null,
+                    "result": [
+                        {
+                            "id": 1,
+                            "flight_no": "G8334",
+                            "airline": "Go First",
+                            "origin_airport": "Chhatrapati Shivaji International Airport",
+                            "origin_city": "Delhi",
+                            "origin_code": "DEL",
+                            "destination_airport": "Chhatrapati Shivaji International Airport",
+                            "destination_city": "Mumbai",
+                            "destination_code": "BOM",
+                            "depart_time": "08:00:00",
+                            "arrival_time": "10:10:00",
+                            "duration": "02:10:00"
+                        },
+                        {
+                            "id": 2,
+                            "flight_no": "G8338",
+                            "airline": "Go First",
+                            "origin_airport": "Chhatrapati Shivaji International Airport",
+                            "origin_city": "Delhi",
+                            "origin_code": "DEL",
+                            "destination_airport": "Chhatrapati Shivaji International Airport",
+                            "destination_city": "Mumbai",
+                            "destination_code": "BOM",
+                            "depart_time": "10:55:00",
+                            "arrival_time": "13:10:00",
+                            "duration": "02:15:00"
+                        }]
+                    }
+                    ```
+                    -   If query params is present, returns appropriate flight list (both departing and returning), but without pagination
+                    ```
+                    {
+                        "departing_flights": [
+                            {
+                                "id": 598,
+                                "flight_no": "SG8702",
+                                "airline": "SpiceJet",
+                                "origin_airport": "Indira Gandhi International Airport",
+                                "origin_city": "Mumbai",
+                                "origin_code": "BOM",
+                                "destination_airport": "Indira Gandhi International Airport",
+                                "destination_city": "Delhi",
+                                "destination_code": "DEL",
+                                "depart_time": "16:00:00",
+                                "arrival_time": "18:20:00",
+                                "duration": "02:20:00"
+                            },
+                            
+                            {
+                                "id": 609,
+                                "flight_no": "SG712",
+                                "airline": "SpiceJet",
+                                "origin_airport": "Indira Gandhi International Airport",
+                                "origin_city": "Mumbai",
+                                "origin_code": "BOM",
+                                "destination_airport": "Indira Gandhi International Airport",
+                                "destination_city": "Delhi",
+                                "destination_code": "DEL",
+                                "depart_time": "00:35:00",
+                                "arrival_time": "03:00:00",
+                                "duration": "02:25:00"
+                            }
+                        ],
+                        "returning_flights": [
+                            {
+                                "id": 7,
+                                "flight_no": "SG8169",
+                                "airline": "SpiceJet",
+                                "origin_airport": "Chhatrapati Shivaji International Airport",
+                                "origin_city": "Delhi",
+                                "origin_code": "DEL",
+                                "destination_airport": "Chhatrapati Shivaji International Airport",
+                                "destination_city": "Mumbai",
+                                "destination_code": "BOM",
+                                "depart_time": "19:45:00",
+                                "arrival_time": "22:00:00",
+                                "duration": "02:15:00"
+                            }
+                            
+                        ]
+                    }
+                    ```
+                * 400 (**Bad Request**)
+                    - Apropriate error messages for the request
+                    Sample Response:
+                    ```
+                    {
+                        "message": "seat class must be their with price filter.."
+                    }
+                    ```
+                * 500 (**Internal Server Error**)
+                    
+            
+
+
+
