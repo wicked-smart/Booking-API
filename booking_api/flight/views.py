@@ -115,7 +115,7 @@ def loginn(request):
                 return Response({"message": "Invalid username and/or password!!!"}, status=status.HTTP_401_UNAUTHORIZED)
 
         else:
-            return Response(serializers.errors, status=status.HTTP_404_NOT_FOUND)
+            return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
      
 
 # airports endpoint
