@@ -20,7 +20,8 @@
 
 
 ## Features and Notes
-*  Users get their API Key after they sign-up/register succesfully
+
+* Users, once they signup , can login to search and book flights and then finally logg out.
 * Allow users to search flights using 11+ filters like departure date, return date, flight number, origin city, airlines, flight duration, price etc. with response customised as per journey type (one-way/round-trip).
 * Users can book the  flight ticket with passenger data like departure date, flight (departing and/or returning ), seat class etc. and receive **booking_ref** in return
 *  Make payments using the **booking_ref** , validate the returned hooks url and click on the response link to receive ticket PDF
@@ -43,6 +44,7 @@
 ## Future Work
 
 * Fix bugs and write various unit , performance and load tests 
+* Add API-key based authentication 
 * Optimise ORM queries/ use **select_related** and **prefetch_related** or maybe use **raw sql queries** to lower the overall response times 
 * ‌Ability to add custom debit and credit cards as payment methods and do live payments
 * Allow users to query on Stops and Layovers 
@@ -57,7 +59,7 @@
 
 ## Link to Documentation
 
-[Documentation](docs.md)
+[API Documentation](docs.md)
 
 
 ## Deploying to Heorku
