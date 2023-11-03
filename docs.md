@@ -17,7 +17,7 @@ endpoints :=
                 - description: password 
             
             sample request body : 
-                ```
+                ```json
                 {
                     "username": "admin",
                     "password": "123"
@@ -29,7 +29,7 @@ endpoints :=
                 - returns csrfToken and sessionId which needs to passed with every endpoint.
 
                 sample response body :- 
-                    ```
+                    ```json
                     {
                         "message": "succesfully logged in",
                         "fooo": "bar"
