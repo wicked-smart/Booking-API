@@ -31,13 +31,13 @@ endpoints :=
             * 200 (**succesfully logged in**)
                 - returns csrfToken and sessionId which needs to passed with every endpoint.
 
-                sample response body: 
-                    ```
-                    {
-                        "message": "succesfully logged in",
-                        "fooo": "bar"
-                    }
-                    ```
+            sample response body: 
+                ```
+                {
+                    "message": "succesfully logged in",
+                    "fooo": "bar"
+                }
+                ```
 
             * 400 (**Bad Request**)
                 - returns appropriate field error message 
@@ -105,17 +105,17 @@ endpoints :=
             * 200 (**succesfully registered**)
                 - returns info of newly registered user
 
-                sample response body: 
-                    ```
-                    {
-                         "id": 4,
-                        "first_name": "rakesh",
-                        "last_name": "mariya",
-                        "mobile_no": "+91-243589072",
-                        "email": "kumar88777@gmail.com",
-                        "username": "rakesh"
-                    }
-                    ```
+            sample response body: 
+                ```
+                {
+                        "id": 4,
+                    "first_name": "rakesh",
+                    "last_name": "mariya",
+                    "mobile_no": "+91-243589072",
+                    "email": "kumar88777@gmail.com",
+                    "username": "rakesh"
+                }
+                ```
 
             * 400 (**Bad Request**)
                 - returns appropriate field error messages
