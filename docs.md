@@ -31,7 +31,8 @@ endpoints :=
                 sample response body :- 
                     ```
                     {
-                        "message": "succesfully logged in"
+                        "message": "succesfully logged in",
+                        "fooo": "bar"
                     }
                     ```
 
