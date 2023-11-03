@@ -47,7 +47,7 @@ endpoints :=
                 - returns the raised exception message
 
 * **/register**
-    Allowed Methods :- POST, PUT
+    Allowed Methods :- **POST**
 
     - **POST**
         - {{BASE_URL}}/register
@@ -102,7 +102,7 @@ endpoints :=
             ```
         
         - responses
-            * 200 (**succesfully registered**)
+            * 201 (**succesfully created new user**)
                 - returns info of newly registered user
 
             Sample response body: 
@@ -148,5 +148,15 @@ endpoints :=
 
 
 * **/logout**
+    - Allowed Method: **GET**
+    
+    * **POST**
+    - {{BASE_URL}}/logout
+
+    * Responses
+        - 200 (**logged out successfully**)
+            * message of succesfull logout
+        - 400 (**Bad Request**)
+            * Bad request message
 
 * 
