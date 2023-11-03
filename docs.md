@@ -1,7 +1,13 @@
 ## API Docs
 
 BASE_URL := **https://flight-booking-rest-api-355b8ab4795a.herokuapp.com/v1/flight_api/**
-
+sample request body : 
+        ```
+        {
+            "username": "admin",
+            "password": "123"
+        }
+        ```
 endpoints := 
 * **/login**
     - allowed methods = *POST*
@@ -17,7 +23,7 @@ endpoints :=
                 - description: password 
             
             sample request body : 
-                ```json
+                ```
                 {
                     "username": "admin",
                     "password": "123"
@@ -29,7 +35,7 @@ endpoints :=
                 - returns csrfToken and sessionId which needs to passed with every endpoint.
 
                 sample response body :- 
-                    ```json
+                    ```
                     {
                         "message": "succesfully logged in",
                         "fooo": "bar"
