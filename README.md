@@ -42,18 +42,16 @@
 
 ## Future Work
 
+* Fix bugs and write various unit , performance and load tests 
 * Optimise ORM queries/ use **select_related** and **prefetch_related** or maybe use **raw sql queries** to lower the overall response times 
 * ‌Ability to add custom debit and credit cards as payment methods and do live payments
 * Allow users to query on Stops and Layovers 
 *  Also, Add feature to book **multi-city** flights
-* Fix the very strange bug of 400 BAD REQUEST on cancelling returning ticket of ROUND_TRIP flight (reason being refunds webhook event data containing same booking_ref for both DEPARTING and RETURNING journey type!)
+* Fix the very strange bug of **400 BAD REQUEST** on cancelling returning ticket of ROUND_TRIP flight (reason being refunds webhook event data containing same booking_ref for both DEPARTING and RETURNING journey type!)
 
 ## Live Demo
 
  [![Video]](https://github.com/wicked-smart/Flight-Booking-API/assets/46626672/d8caf614-9dae-467e-b777-e225344bf5af)
-
-
-
 
 
 
@@ -94,4 +92,32 @@ $ docker-compose -f docker-compose.prod.yml down -v
 
 ## Deploying on Heorku
 
+Deploying to heroku using its container registry and not heroku.yml.
+
+1. Login to heroku container 
+```
+$ heroku container:login -a APP_NAME
+```
+2. Rename Dockerfile to Dockerfile.web and Dcokerfile.celery to Dockerfile.worker , then recursively push to the registry
+
+```
+$ sudo heroku container:push --recursive -a APP_NAME
+```
 ![docker build](images/demo_output.svg)
+
+3. After it is succesfully built and pushed ,we release the web and worker containers to heroku using herokurelease command
+
+```
+$ sudo herou container:release web worker -a APP_NAME
+```
+
+4. Now, we will dump the fixtures into app's fixtures directory , update settings.py file to include remote db'd credentials and then load the data.
+
+```
+$ cd booking_api/
+$ python3 manage.py dumpdata --indent 2 > flight/fixtures/db.json
+$ python3 manage.py loaddata -v 3 flight/fixtures/db.json
+```
+
+![loaddata output](images/fixture.png)
+

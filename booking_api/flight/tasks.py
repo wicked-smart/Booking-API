@@ -4,6 +4,9 @@ import os
 from django.template.loader import get_template
 from django.template import Context
 from .utils import *
+import boto3 
+from botocore.exceptions import ClientError
+from io import BytesIO
 
 @shared_task
 def add(a,b):
@@ -17,7 +20,7 @@ def generate_reciept_pdf(booking_ref):
     while receipt_url is None:
         receipt_url = booking.refund_receipt_url
 
-    print("receipt url := ", receipt_url)
+    #print("receipt url := ", receipt_url)
 
     pdf_options = {
                     'page-size': 'Letter',
@@ -28,13 +31,41 @@ def generate_reciept_pdf(booking_ref):
                 }
     
     pdf = pdfkit.from_url(receipt_url, False, pdf_options)
+    pdf_buffer = BytesIO(pdf)
+
     pdf_filename = f"refund_receipt_{booking.booking_ref}.pdf"
 
-    pdf_path = os.path.join(settings.MEDIA_ROOT, f"refunds/{pdf_filename}")
-    with open(pdf_path, 'wb') as pdf_file:
-        pdf_file.write(pdf)
+    # pdf_path = os.path.join(settings.MEDIA_ROOT, f"refunds/{pdf_filename}")
+    # with open(pdf_path, 'wb') as pdf_file:
+    #     pdf_file.write(pdf)
     
-    return pdf_filename
+    try:
+        s3 = boto3.client('s3', region_name='ap-south-1')
+        s3_bucket_name = 'flight-booking-bucket'
+        s3_key = pdf_filename
+
+        s3.upload_fileobj(pdf_buffer, s3_bucket_name, s3_key)
+
+        presigned_url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': s3_bucket_name, 'Key': s3_key},
+            ExpiresIn=3600
+        )
+        print(presigned_url)  ##################
+
+        return presigned_url
+    
+        # with open(pdf_path, 'wb') as pdf_file:
+        #     pdf_file.write(pdf)
+        #     print("PDF successfully saved at", pdf_path)
+        #     foo = os.path.exists(pdf_path)
+        #     print("pdf exists :- ", foo)
+
+    except ClientError as e:
+        print("Error while uploading a3 pdf", str(e))
+        return None
+    
+    
 
 @shared_task
 def generate_ticket_pdf(booking_ref):
@@ -141,22 +172,40 @@ def generate_ticket_pdf(booking_ref):
 
     #pdfkit using from string
     pdf = pdfkit.from_string(rendered_template, False, pdf_options)
+    pdf_buffer = BytesIO(pdf)
 
     #save ticket in MEDIA_ROOT
     pdf_filename = f"booking_ticket_{booking.booking_ref}.pdf"
     print("pdf filename := ", pdf_filename)
 
 
-    pdf_path = os.path.join(settings.MEDIA_ROOT, f"tickets/{pdf_filename}")
-    print("pdf_path := ", pdf_path)
+    #pdf_path = os.path.join(settings.MEDIA_ROOT, f"tickets/{pdf_filename}")
+    #print("pdf_path := ", pdf_path)
     try:
-        with open(pdf_path, 'wb') as pdf_file:
-            pdf_file.write(pdf)
-            print("PDF successfully saved at", pdf_path)
-            foo = os.path.exists(pdf_path)
-            print("pdf exists :- ", foo)
-    except Exception as e:
-        print("Error while saving PDF:", str(e))
-        
+        s3 = boto3.client('s3', region_name='ap-south-1')
+        s3_bucket_name = 'flight-booking-bucket'
+        s3_key = pdf_filename
+
+        s3.upload_fileobj(pdf_buffer, s3_bucket_name, s3_key)
+
+        presigned_url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': s3_bucket_name, 'Key': s3_key},
+            ExpiresIn=3600
+        )
+        print(presigned_url)  ##################
+
+        return presigned_url
+    
+        # with open(pdf_path, 'wb') as pdf_file:
+        #     pdf_file.write(pdf)
+        #     print("PDF successfully saved at", pdf_path)
+        #     foo = os.path.exists(pdf_path)
+        #     print("pdf exists :- ", foo)
+
+    except ClientError as e:
+        print("Error while uploading a3 pdf", str(e))
+        return None
+    #except Exception as e:   
     
     #return pdf_filename

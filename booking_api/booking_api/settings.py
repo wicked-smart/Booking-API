@@ -106,6 +106,8 @@ if IS_HEROKU_APP:
             ssl_require=True,
         ),
     }
+
+
 else:
      # When running locally in development or in CI, a sqlite database file will be used instead
      # to simplify initial setup. Longer term it's recommended to use Postgres locally too.
@@ -118,6 +120,8 @@ else:
          'PASSWORD': os.environ.get('DB_PASSWORD'),
      }
  }
+
+
 
 
 
@@ -147,7 +151,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -203,4 +207,4 @@ CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
-#CSRF_TRUSTED_ORIGINS = ["https://flight-boooking-api-430fc914eb13.herokuapp.com"]
+CSRF_TRUSTED_ORIGINS = ["https://flight-booking-rest-api-355b8ab4795a.herokuapp.com/"]
