@@ -42,7 +42,16 @@ endpoints :=
             * 400 (**Bad Request**)
                 - returns appropriate field error message 
             * 401 (**Unauthorized**)
-                - returns appropriate error message
+                - returns this message of user does not have proper permission for this request
+            
+            * 403 (**Forbidden**)
+                    - returns this error if user is not authenticated  or missing some csrf token in the request header
+                    - sample error message 
+                    ```
+                    {
+                        "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
+                    }
+                    ```
             * 500 (**Error internally from app side**)
                 - returns the raised exception message
 
@@ -158,8 +167,22 @@ endpoints :=
     * Responses
         - 200 (**logged out successfully**)
             * message of succesfull logout
+        
         - 400 (**Bad Request**)
             * Bad request message
+        
+        *  401 (**Unauthorized**)
+                - returns this message of user does not have proper permission for this request
+
+        * 403 (**Forbidden**)
+            - returns this error if user is not authenticated  or missing some csrf token in the request header
+            - sample error message 
+            ```
+            {
+                "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
+            }
+            ```
+        
 
 
 
@@ -226,6 +249,7 @@ endpoints :=
 
 
             - Responses
+
                 * 200 (**successful request**)
                     - if no query params specified, returns paginated data of all the flights in the database
                     sample response 
@@ -326,7 +350,20 @@ endpoints :=
                         "message": "seat class must be their with price filter.."
                     }
                     ```
+                
+                 *  401 (**Unauthorized**)
+                     - returns this message if user does not have proper permission for this request
+
+                 * 403 (**Forbidden**)
+                     - returns this error if user is not authenticated  or missing some csrf token in the request header
+                     - sample error message 
+                     ```
+                     {
+                        "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
+                     }
+                     ```
                 * 500 (**Internal Server Error**)
+                    - appropriate internal server error message
         
 
 * **/book/:flight_id**
@@ -348,37 +385,343 @@ endpoints :=
                 - example: 3CwkDICL51KCKCF3QbIflWlXvDiMN55S
 
         - Body Parameters 
-                - seat_class (**required**)
-                    - type: string
-                    - description: Seat Class of the Passengers. Must be ECONOMY, BUISNESS or FIRST_CLASS
-                    - example: ECONOMY
 
-                - trip_type   (**required**)
-                    - type: string
-                    - description: Trip Type of the journey, must be ONE_WAY or ROUND_TRIP
-                
-                - flight_dep_date (**required**)
-                    - type: string
-                    - description: Flight Departure Date, in indian format ('dd-mm-yyyy')
-                    - example: '12-11-2023'
-                
-                - return_flight
-                    - type: integer
-                    - description: ID of the return flight, required for ROUND_TRIP journeys
-                    - example: 23
-                
-                - return_flight_dep_date (**required**)
-                    - type: string
-                    - description: Return Flight Departure date, in indian format ('dd-mm-yyyy')
-                    - example: '12-11-2023'
-                
-                - extra_baggage_booking_mode (**required**)
-                    - type: string
-                    - Description: Whether extra baggage has been pre-booked or at airport. Must be one of the      values PRE-BOOKING or AT-AIRPORT
-                    - example: PRE-BOOKING
-                
+            *  seat_class (**required**)
+                - type: string
+                - description: Seat Class of the Passengers. Must be ECONOMY, BUISNESS or FIRST_CLASS
+                - example: ECONOMY
 
+            * trip_type   (**required**)
+                - type: string
+                - description: Trip Type of the journey, must be ONE_WAY or ROUND_TRIP
             
+            *  flight_dep_date (**required**)
+                - type: string
+                - description: Flight Departure Date, in indian format ('dd-mm-yyyy')
+                - example: '12-11-2023'
+            
+            *  return_flight
+                - type: integer
+                - description: ID of the return flight, required for ROUND_TRIP journeys
+                - example: 23
+            
+            *  return_flight_dep_date (**required**)
+                - type: string
+                - description: Return Flight Departure date, in indian format ('dd-mm-yyyy')
+                - example: '12-11-2023'
+            
+            *  extra_baggage_booking_mode (**required**)
+                - type: string
+                - Description: Whether extra baggage has been pre-booked or at airport. Must be one of the      values PRE-BOOKING or AT-AIRPORT
+                - example: PRE-BOOKING
+            
+            * passengers (**required**)
+                - type: array of objects
+                - Description: Passengers for the flight
+                - object: 
+                    * first_name (**required**)
+                        - type: string 
+                        - description: First Name of the passenger
+                        - max length: 100
+                        - example: "Ravi"
+
+                    * last_name (**required**)
+                        - type: string
+                        - desription: Last Name of the passengers
+                        - max length: 100
+                        - example: "kumar"
+                    
+                    * gender (**required**)
+                        - type: string
+                        - deacription: Gender of the Passenger, Must be either MALE, FEMALE or OTHERS
+                        - max length: 10
+                        - example: FEMALE
+                    
+                    * age (**required**)
+                        - type: integer
+                        - description: Age of the passenger
+                        - example: 21
+                    
+                    * type (**required**)
+                        - type: string
+                        - description: Age class of the passeneger, can be either Adult, child, infant, old etc.
+                        - example: Infant
+
+                    *  seat_type (**required**)
+                        - type: string
+                        - description: Seat preference of the passenger , Must be either AISLE, WINDOW or MIDDLE
+                        - example: WINDOW
+                    
+                    * hand_baggage (**required**)
+                        - type: float
+                        - desciption: Hand Baggage weight to be carried with the Passenger (in Kgs)
+                        - example: 6.5 
+                    
+                    * check_in_baggage (**required**)
+                        - type: float
+                        - description: Check in baggage weight to be checked in on the flight (in kgs)
+                        - example: 12.6
+                
+                - Example:
+
+                    ```
+                    
+                    {
+                        "first_name": "Saul",
+                        "last_name": "Goodman",
+                        "gender": "MALE",
+                        "age": 38,
+                        "type": "Adult",
+                        "seat_type": "WINDOW",
+                        "hand_baggage": 6.5,
+                        "check_in_baggage": 16.0
+                     }
+
+                    ```
+            - Sample Passengers object
+            ```
+            
+            {
+                "seat_class": "ECONOMY",
+                "flight_dep_date": "02-11-2023",
+                "extra_baggage_booking_mode": "AT_AIRPORT",
+                "trip_type": "ROUND_TRIP",
+                "return_flight": 23,
+                "return_flight_dep_date": "12-11-2023",
+                "passengers": [
+                    {
+                        "first_name": "Saul",
+                        "last_name": "Goodman",
+                        "gender": "MALE",
+                        "age": 38,
+                        "type": "Adult",
+                        "seat_type": "WINDOW",
+                        "hand_baggage": 6.5,
+                        "check_in_baggage": 16.0
+                    },
+
+                    {
+                        "first_name": "Ashwin",
+                        "last_name": "Fukra",
+                        "gender": "MALE",
+                        "age": 32,
+                        "type": "Adult",
+                        "seat_type": "AISLE",
+                        "check_in_baggage": 14.0
+                    },
+                    {
+                        "first_name": "Roushan",
+                        "last_name": "Kumar",
+                        "gender": "MALE",
+                        "age": 28,
+                        "type": "Adult",
+                        "seat_type": "WINDOW",
+                        "check_in_baggage": 14.0
+                    }
+                ]
+            }
+
+
+            ```
+
+
+        - Response
+
+            * 200 (**succesfully booked**)
+                - if trip_type is ONE_WAY , response will contain on about ticket booked for departing or returning flight 
+
+                Sample Response for ONE_WAY
+                ```
+                {
+                    "booking_ref": "BBDF77",
+                    "flight": 598,
+                    "payment_status": "NOT_ATTEMPTED",
+                    "trip_type": "ONE WAY",
+                    "booking_status": "PENDING",
+                    "booked_at": "2023-11-04T09:04:34.001227+05:30",
+                    "flight_dep_date": "2023-11-05",
+                    "flight_arriv_date": "2023-11-05",
+                    "seat_class": "ECONOMY",
+                    "coupon_used": false,
+                    "extra_baggage_booking_mode": "AT_AIRPORT",
+                    "extra_check_in_baggage": 1.0,
+                    "extra_baggage_price": 550.0,
+                    "total_fare": 17935.0,
+                    "separate_ticket": null,
+                    "other_booking_ref": null,
+                    "flight_depart_time": "16:00:00",
+                    "flight_arrival_time": "18:20:00",
+                    "passengers": [
+                        {
+                            "first_name": "Ashwin",
+                            "last_name": "chowbe",
+                            "gender": "MALE",
+                            "age": 32,
+                            "age_category": "Adult",
+                            "hand_baggage": 0.0,
+                            "check_in_baggage": 14.0,
+                            "seat": "01C",
+                            "seat_type": "AISLE"
+                        },
+                        {
+                            "first_name": "Abhishek",
+                            "last_name": "kumar",
+                            "gender": "MALE",
+                            "age": 38,
+                            "age_category": "Adult",
+                            "hand_baggage": 6.5,
+                            "check_in_baggage": 16.0,
+                            "seat": "01A",
+                            "seat_type": "WINDOW"
+                        },
+                        {
+                            "first_name": "Roushan",
+                            "last_name": "Kumar",
+                            "gender": "MALE",
+                            "age": 28,
+                            "age_category": "Adult",
+                            "hand_baggage": 0.0,
+                            "check_in_baggage": 14.0,
+                            "seat": "01F",
+                            "seat_type": "WINDOW"
+                        }
+                    ]
+                }
+                ```
+
+                - If journey is round trip and both departing and returning airlines are different , response will contain separate tickt info for both airlines
+
+                Sample Response for this case:
+                ```
+                {
+                    "booking": {
+                        "booking_ref": "452F47",
+                        "flight": 598,
+                        "payment_status": "NOT_ATTEMPTED",
+                        "trip_type": "ROUND_TRIP",
+                        "booking_status": "PENDING",
+                        "booked_at": "2023-11-04T09:11:23.065038+05:30",
+                        "flight_dep_date": "2023-11-05",
+                        "flight_arriv_date": "2023-11-05",
+                        "seat_class": "ECONOMY",
+                        "coupon_used": false,
+                        "extra_baggage_booking_mode": "AT_AIRPORT",
+                        "extra_check_in_baggage": 1.0,
+                        "extra_baggage_price": 550.0,
+                        "coupon_code": "",
+                        "coupon_discount": 0.0,
+                        "total_fare": 17903.0,
+                        "flight_depart_time": "16:00:00",
+                        "flight_arrival_time": "18:20:00",
+                        "passengers": [
+                            {
+                                "first_name": "Ashwin",
+                                "last_name": "chowbe",
+                                "gender": "MALE",
+                                "age": 32,
+                                "age_category": "Adult",
+                                "hand_baggage": 0.0,
+                                "check_in_baggage": 14.0,
+                                "seat": "01D",
+                                "seat_type": "AISLE"
+                            },
+                            {
+                                "first_name": "Abhishek",
+                                "last_name": "kumar",
+                                "gender": "MALE",
+                                "age": 38,
+                                "age_category": "Adult",
+                                "hand_baggage": 6.5,
+                                "check_in_baggage": 16.0,
+                                "seat": "02A",
+                                "seat_type": "WINDOW"
+                            },
+                            {
+                                "first_name": "Roushan",
+                                "last_name": "Kumar",
+                                "gender": "MALE",
+                                "age": 28,
+                                "age_category": "Adult",
+                                "hand_baggage": 0.0,
+                                "check_in_baggage": 14.0,
+                                "seat": "02F",
+                                "seat_type": "WINDOW"
+                            }
+                        ]
+                    },
+                    "return_booking": {
+                        "booking_ref": "154B6D",
+                        "flight": 23,
+                        "payment_status": "NOT_ATTEMPTED",
+                        "trip_type": "ROUND_TRIP",
+                        "booking_status": "PENDING",
+                        "booked_at": "2023-11-04T09:11:23.067527+05:30",
+                        "flight_dep_date": "2023-11-12",
+                        "flight_arriv_date": "2023-11-12",
+                        "seat_class": "ECONOMY",
+                        "coupon_used": false,
+                        "extra_baggage_booking_mode": "AT_AIRPORT",
+                        "extra_check_in_baggage": 1.0,
+                        "extra_baggage_price": 550.0,
+                        "coupon_code": "",
+                        "coupon_discount": 0.0,
+                        "total_fare": 17261.0,
+                        "flight_depart_time": "18:20:00",
+                        "flight_arrival_time": "20:35:00",
+                        "passengers": [
+                            {
+                                "first_name": "Ashwin",
+                                "last_name": "chowbe",
+                                "gender": "MALE",
+                                "age": 32,
+                                "age_category": "Adult",
+                                "hand_baggage": 0.0,
+                                "check_in_baggage": 14.0,
+                                "seat": "02D",
+                                "seat_type": "AISLE"
+                            },
+                            {
+                                "first_name": "Abhishek",
+                                "last_name": "kumar",
+                                "gender": "MALE",
+                                "age": 38,
+                                "age_category": "Adult",
+                                "hand_baggage": 6.5,
+                                "check_in_baggage": 16.0,
+                                "seat": "04A",
+                                "seat_type": "WINDOW"
+                            },
+                            {
+                                "first_name": "Roushan",
+                                "last_name": "Kumar",
+                                "gender": "MALE",
+                                "age": 28,
+                                "age_category": "Adult",
+                                "hand_baggage": 0.0,
+                                "check_in_baggage": 14.0,
+                                "seat": "04F",
+                                "seat_type": "WINDOW"
+                            }
+                        ]
+                    }
+                }
+                ```
+                - lastly
+
+            *  401 (**Unauthorized**)
+                     - returns this message if user does not have proper permission for this request
+
+            * 403 (**Forbidden**)
+                - returns this error if user is not authenticated  or missing some csrf token in the request header
+                - sample error message 
+                ```
+                {
+                    "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
+                }
+                ```
+
+
+                        
 
 
 
