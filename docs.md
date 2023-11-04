@@ -223,6 +223,8 @@ endpoints :=
                 - type: float
                 - desciption: Minimum price of the ticket
             
+
+
             - Responses
                 * 200 (**successful request**)
                     - if no query params specified, returns paginated data of all the flights in the database
@@ -325,7 +327,57 @@ endpoints :=
                     }
                     ```
                 * 500 (**Internal Server Error**)
-                    
+        
+
+* **/book/:flight_id**
+    - Allowed Methods: POST
+
+    - {{BASE_URL}}/book_flight/:flight_id
+
+    - **POST**
+
+        - Path Parameter
+            - flight_id
+                * type: integer
+                * description: id of the flight retrieved from **/flights** call  
+
+        - Header Parameters
+            - X-CSRFToken
+                - type: string
+                - description: csrf token value returned after logging in 
+                - example: 3CwkDICL51KCKCF3QbIflWlXvDiMN55S
+
+        - Body Parameters 
+                - seat_class (**required**)
+                    - type: string
+                    - description: Seat Class of the Passengers. Must be ECONOMY, BUISNESS or FIRST_CLASS
+                    - example: ECONOMY
+
+                - trip_type   (**required**)
+                    - type: string
+                    - description: Trip Type of the journey, must be ONE_WAY or ROUND_TRIP
+                
+                - flight_dep_date (**required**)
+                    - type: string
+                    - description: Flight Departure Date, in indian format ('dd-mm-yyyy')
+                    - example: '12-11-2023'
+                
+                - return_flight
+                    - type: integer
+                    - description: ID of the return flight, required for ROUND_TRIP journeys
+                    - example: 23
+                
+                - return_flight_dep_date (**required**)
+                    - type: string
+                    - description: Return Flight Departure date, in indian format ('dd-mm-yyyy')
+                    - example: '12-11-2023'
+                
+                - extra_baggage_booking_mode (**required**)
+                    - type: string
+                    - Description: Whether extra baggage has been pre-booked or at airport. Must be one of the      values PRE-BOOKING or AT-AIRPORT
+                    - example: PRE-BOOKING
+                
+
             
 
 
