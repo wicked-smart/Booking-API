@@ -434,7 +434,7 @@ endpoints :=
                     
                     * gender (**required**)
                         - type: string
-                        - deacription: Gender of the Passenger, Must be either MALE, FEMALE or OTHERS
+                        - deacription: Gender of the Passenger, Must be either **MALE**, **FEMALE** or **OTHERS**
                         - max length: 10
                         - example: FEMALE
                     
@@ -450,7 +450,7 @@ endpoints :=
 
                     *  seat_type (**required**)
                         - type: string
-                        - description: Seat preference of the passenger , Must be either AISLE, WINDOW or MIDDLE
+                        - description: Seat preference of the passenger , Must be either **AISLE**, **WINDOW** or **MIDDLE**
                         - example: WINDOW
                     
                     * hand_baggage (**required**)
@@ -808,7 +808,7 @@ endpoints :=
                 ```
 
             *  401 (**Unauthorized**)
-                     - returns this message if user does not have proper permission for this request
+                - returns this message if user does not have proper permission for this request
 
             *  403 (**Forbidden**)
                 - returns this error if user is not authenticated  or missing some csrf token in the request header
@@ -818,8 +818,141 @@ endpoints :=
                     "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
                 }
                 ```
+            *  500 (**Internal Server Error**)
+                - returns internal server error with proper exception handling message
 
 
+* **/bookings/:booking_ref**
+    Allowed Methods: GET, PUT
+    {{BASE_URL}}/bookings/:booking_ref
+    **GET**
+
+    **PUT**
+    - Header Parameters
+        - X-CSRFToken
+            - type: string
+            - description: csrf token value returned after logging in                
+            - example: 3CwkDICL51KCKCF3QbIflWlXvDiMN55S
+
+
+    - Path Parameters
+        * booking_ref
+            - type: string
+            - Description: booking_ref returned on booking a flight
+            - max length: 6
+            - example: /bookings/DE56RH
+
+    - Body Parameters
+        * booking_status (**required**)
+            - type: string
+            - Description: Desired booking status of the tickets, **CANCELED** in this case
+            - max length: 10
+        
+        * cancellation_type 
+            - type: string
+            - Description: In case of round trip flights, it is very **required**, must have mentioned whether **DEPARTING**, **RETURNING** or **BOTH**
+            - max length: 20
+            - example: DEPARTING
+        
+        - sample PUT body example for cancelling round_trip flights
+        ```
+        {
+            "booking_status": "CANCELED",
+            "cancellation_type": "RETURNING"
+        }
+        ```
+    - Responses
+
+        * 200 (**succesfully cancelled**)
+            - if cancellation is successfull , it returns appropriate message of successfull cancellation and url link to receipt pdf deacribing returned amount 
+
+            ```
+            {
+                "message": "succesfully cancelled ticket , receipt PDF is being generated. You can download it here once it's ready."
+            }
+            ```
+
+        * 400 (**Bad Request**)
+            - appropirate error messages , if request is bad like ticket cancellation time is less than 2 hours 
+
+        *  401 (**Unauthorized**)
+                - returns this message if user does not have proper permission for this request
+
+        *  403 (**Forbidden**)
+            - returns this error if user is not authenticated  or missing some csrf token in the request header
+            - sample error message 
+            ```
+            {
+                "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
+            }
+            ```
+        * 500 (**Internal Server Error**)
+            - returns internal server error message with proper exception handling data
+
+
+
+
+* **/payments/:booking_ref**
+    Allowed Methods: POST
+
+    {{BASE_URL}}/payments/:booking_ref
+
+    **POST**
+    - Header Parameters
+        - X-CSRFToken (**required**)
+            - type: string
+            - description: csrf token value returned after logging in                
+            - example: 3CwkDICL51KCKCF3QbIflWlXvDiMN55S
+
+
+    - Path Parameters
+        * booking_ref (**required**)
+            - type: string
+            - Description: booking_ref returned on booking a flight
+            - max length: 6
+            - example: /bookings/DE56RH
+
+    
+    - Responses
+        * 200 (**succesfull payment**)
+            - on succesfull payment , booking status is changed to **CONFIRMED** and response is returned which contains pdf tickets url (separate for departing and returning , if different airline!) to be clicked to retreive pdfs , stripe sdk url (which needs to be validated by either making GET requests to it or pasting URL in browser)
+
+            - Sample Response Object
+            ```
+            {
+                "payemnt_intent_id": "pi_3O8ko0SBlwNpuxB20CYOI1XB",
+                "ticket_pdf_url": "Your Ticket will be availalbe <a href='/v1/flight_api/download_pdf/ACB4C4/ticket/booking_ticket_ACB4C4.pdf'>here</a> once you have succesfully completed next_action of authenticating url !!",
+                "next_action": "Click on the hook url with this response and ping GET endpoint for payment confirmation ",
+                "url": {
+                    "type": "use_stripe_sdk",
+                    "use_stripe_sdk": {
+                        "source": "src_1O8ko0SBlwNpuxB2irjv3blE",
+                        "stripe_js": "https://hooks.stripe.com/redirect/authenticate/src_1O8ko0SBlwNpuxB2irjv3blE?client_secret=src_client_secret_3HjekD5R3RJb24LTmuDS0CiS&source_redirect_slug=test_YWNjdF8xTlRQWWhTQmx3TnB1eEIyLF9Pd2U2azFMS0Zlejd2UWpiTWlZMjhrNTk4OVU5WDFv0100ouAWuBpq",
+                        "type": "three_d_secure_redirect"
+                    }
+                }
+            }
+            ```
+        
+        * 400 (**Bad Request**)
+            - appropriate error message
+
+        *  401 (**Unauthorized**)
+                - returns this message if user does not have proper permission for this request
+
+        *  403 (**Forbidden**)
+            - returns this error if user is not authenticated  or missing some csrf token in the request header
+            - sample error message 
+            ```
+            {
+                "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
+            }
+            ```
+        * 500 (**Internal Server Error**)
+            - returns internal server error message with proper exception handling data
+
+
+        
 
 
 

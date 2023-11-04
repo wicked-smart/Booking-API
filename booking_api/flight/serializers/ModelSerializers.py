@@ -542,8 +542,83 @@ class FlightBookingSerializer(serializers.ModelSerializer):
 
         #print("flight := ", flight)
         # GET /bookings/<str:booking_ref>   write to handdle this case
+        if request and request.method == 'GET' and ret['trip_type'] == 'ROUND_TRIP':
+            booking = self.context.get('booking')
+            ret_booking = self.context.get('ret_booking')
 
-        if request and ( request.method == 'POST' or request.method == 'GET' ) :
+            booking_data = super().to_representation(booking)
+            ret_booking_data = super().to_representation(ret_booking)
+
+            # insert flight timiings and passengers seats info , then return
+            if flight.airline  == ret_flight.airline:
+
+                booking_data.pop("separate_ticket")
+                booking_data.pop("other_booking_ref")
+                booking_data["flight_depart_time"] = flight.depart_time
+                booking_data["flight_arrival_time"] = flight.arrival_time
+
+                depart_date = booking_data["flight_dep_date"]
+                dep_passengers = self.get_passengers_seats(booking_data["booking_ref"],  depart_date, flight)
+                booking_data.pop("passengers")
+                if dep_passengers is None:
+                    booking_data["departure_error"] = "seats for departing passengers have not been allocated correctly!"
+                else:
+                    booking_data["passengers"] = dep_passengers
+                
+                # merge ret_booking info
+                booking_data["return_flight"] = ret_booking_data.pop("flight")
+                ret_depart_date = ret_booking_data.pop("flight_dep_date")
+                booking_data["return_flight_dep_date"] = ret_depart_date
+                booking_data["return_flight_arrival_date"] = ret_booking_data.pop("flight_arriv_date")
+                booking_data["flight_depart_time"] = ret_flight.depart_time
+                booking_data["flight_arrival_time"] = ret_flight.arrival_time
+                booking_data["return_booking_status"] = ret_booking_data.pop("booking_status")
+                booking_data["return_total_fare"] = ret_booking_data.pop("total_fare")
+
+                #get return booking passengers
+                ret_passengers = self.get_passengers_seats(ret_booking_data["booking_ref"],  ret_depart_date, ret_flight)
+                if ret_passengers is None:
+                    booking_data["return_error"] = "seats for returning passengers have not been allocated correctly!"
+                else:
+                    booking_data["return_passengers"] = ret_passengers
+
+                return booking_data
+            
+            else:
+                booking_data.pop("separate_ticket")
+                booking_data.pop("other_booking_ref")
+                booking_data["flight_depart_time"] = flight.depart_time
+                booking_data["flight_arrival_time"] = flight.arrival_time
+
+                #get passenegrs
+                depart_date = booking_data["flight_dep_date"]
+                dep_passengers = self.get_passengers_seats(booking_data["booking_ref"],  depart_date, flight)
+                booking_data.pop("passengers")
+                if dep_passengers is None:
+                    booking_data["departure_error"] = "seats for departing passengers have not been allocated correctly!"
+                else:
+                    booking_data["passengers"] = dep_passengers
+
+                #manage returning passengers
+                ret_booking_data.pop("separate_ticket")
+                ret_booking_data.pop("other_booking_ref")
+                ret_booking_data["flight_depart_time"] = ret_flight.depart_time
+                ret_booking_data["flight_arrival_time"] = ret_flight.arrival_time
+
+                #get passenegrs
+                return_date = ret_booking_data["flight_dep_date"]
+                ret_passengers = self.get_passengers_seats(ret_booking_data["booking_ref"],  return_date, ret_flight)
+                ret_booking_data.pop("passengers")
+                if ret_passengers is None:
+                    ret_booking_data["departure_error"] = "seats for departing passengers have not been allocated correctly!"
+                else:
+                    ret_booking_data["passengers"] = ret_passengers
+                
+                return {"booking": booking_data, "return_booking": ret_booking_data}
+                
+
+
+        if request and (request.method == 'POST' or ret["trip_type"] == 'ONE_WAY'):
 
             coupon_used = ret.get('coupon_used')
 

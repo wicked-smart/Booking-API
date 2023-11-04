@@ -633,8 +633,22 @@ def bookings(request, booking_ref):
         return Response({'message': 'Booking Does Not Exsis!'})
     
     if request.method == 'GET':
-        serializer = FlightBookingSerializer(booking, context={'request': request, 'flight': booking.flight})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if booking.trip_type == 'ONE_WAY':
+            serializer = FlightBookingSerializer(booking, context={'request': request, 'flight': booking.flight})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        elif booking.trip_type == 'ROUND_TRIP':
+            try:
+                ret_booking = Booking.objects.get(booking_ref=booking.other_booking_ref)
+                serializer = FlightBookingSerializer(booking, 
+                                                     context={'request': request, 
+                                                              'booking': booking, 
+                                                              'ret_booking': ret_booking,
+                                                              'flight': booking.flight, 
+                                                              'ret_flight': ret_booking.flight}
+                                                            )
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Booking.DoesNotExist:
+                return Response({"message": "return booking does not exits !"}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PUT':
         data = request.data 
