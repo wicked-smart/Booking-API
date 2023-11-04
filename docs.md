@@ -151,6 +151,7 @@ endpoints :=
 
             * 401 (**Unauthorized**)
                 - returns appropriate error message
+
             * 500 (**Error internally from app side**)
                 - returns the raised exception message
 
@@ -229,7 +230,7 @@ endpoints :=
             
             * seat_class
                 - type: string
-                - desciption: seat class of the seat (One of the following value ECONOMY, BUISNESS, PREMIUM_ECONOMY )
+                - desciption: seat class of the seat (One of the following value **ECONOMY**, **BUISNESS**, **PREMIUM_ECONOMY** )
                 - max length: 10
             
             * airlines
@@ -388,32 +389,32 @@ endpoints :=
 
             *  seat_class (**required**)
                 - type: string
-                - description: Seat Class of the Passengers. Must be ECONOMY, BUISNESS or FIRST_CLASS
+                - description: Seat Class of the Passengers. Must be **ECONOMY**, **BUISNESS** or **FIRST_CLASS**
                 - example: ECONOMY
 
             * trip_type   (**required**)
                 - type: string
-                - description: Trip Type of the journey, must be ONE_WAY or ROUND_TRIP
+                - description: Trip Type of the journey, must be **ONE_WAY** or **ROUND_TRIP**
             
             *  flight_dep_date (**required**)
                 - type: string
-                - description: Flight Departure Date, in indian format ('dd-mm-yyyy')
+                - description: Flight Departure Date, in indian format (**'dd-mm-yyyy'**)
                 - example: '12-11-2023'
             
             *  return_flight
                 - type: integer
-                - description: ID of the return flight, required for ROUND_TRIP journeys
+                - description: ID of the return flight, required for **ROUND_TRIP** journeys
                 - example: 23
             
             *  return_flight_dep_date (**required**)
                 - type: string
-                - description: Return Flight Departure date, in indian format ('dd-mm-yyyy')
+                - description: Return Flight Departure date, in indian format (**'dd-mm-yyyy'**)
                 - example: '12-11-2023'
             
             *  extra_baggage_booking_mode (**required**)
                 - type: string
-                - Description: Whether extra baggage has been pre-booked or at airport. Must be one of the      values PRE-BOOKING or AT-AIRPORT
-                - example: PRE-BOOKING
+                - Description: Whether extra baggage has been pre-booked or at airport. Must be one of the      values **PRE-BOOKING** or **AT-AIRPORT**
+                - example: **PRE-BOOKING**
             
             * passengers (**required**)
                 - type: array of objects
@@ -478,7 +479,7 @@ endpoints :=
                      }
 
                     ```
-            - Sample Passengers object
+            - Sample Booking object
             ```
             
             {
@@ -706,12 +707,110 @@ endpoints :=
                     }
                 }
                 ```
-                - lastly
+                - lastly, if both departing and returning airlines is same
+                Sample Response:
+                ```
+                {
+                    "booking_ref": "ACB4C4",
+                    "flight": 598,
+                    "payment_status": "NOT_ATTEMPTED",
+                    "trip_type": "ROUND_TRIP",
+                    "booking_status": "PENDING",
+                    "booked_at": "2023-11-04T10:10:20.341760+05:30",
+                    "flight_dep_date": "2023-11-05",
+                    "flight_arriv_date": "2023-11-05",
+                    "seat_class": "ECONOMY",
+                    "coupon_used": false,
+                    "extra_baggage_booking_mode": "AT_AIRPORT",
+                    "extra_check_in_baggage": 1.0,
+                    "extra_baggage_price": 550.0,
+                    "coupon_code": "",
+                    "coupon_discount": 0.0,
+                    "total_fare": 17877.0,
+                    "flight_depart_time": "19:45:00",
+                    "flight_arrival_time": "22:00:00",
+                    "passengers": [
+                        {
+                            "first_name": "Ashwin",
+                            "last_name": "chowbe",
+                            "gender": "MALE",
+                            "age": 32,
+                            "age_category": "Adult",
+                            "hand_baggage": 0.0,
+                            "check_in_baggage": 14.0,
+                            "seat": "02C",
+                            "seat_type": "AISLE"
+                        },
+                        {
+                            "first_name": "Abhishek",
+                            "last_name": "kumar",
+                            "gender": "MALE",
+                            "age": 38,
+                            "age_category": "Adult",
+                            "hand_baggage": 6.5,
+                            "check_in_baggage": 16.0,
+                            "seat": "03A",
+                            "seat_type": "WINDOW"
+                        },
+                        {
+                            "first_name": "Roushan",
+                            "last_name": "Kumar",
+                            "gender": "MALE",
+                            "age": 28,
+                            "age_category": "Adult",
+                            "hand_baggage": 0.0,
+                            "check_in_baggage": 14.0,
+                            "seat": "03F",
+                            "seat_type": "WINDOW"
+                        }
+                    ],
+                    "return_flight": 7,
+                    "return_flight_dep_date": "2023-11-12",
+                    "return_flight_arrival_date": "2023-11-12",
+                    "return_booking_status": "PENDING",
+                    "return_total_fare": 16716.0,
+                    "return_passengers": [
+                        {
+                            "first_name": "Ashwin",
+                            "last_name": "chowbe",
+                            "gender": "MALE",
+                            "age": 32,
+                            "age_category": "Adult",
+                            "hand_baggage": 0.0,
+                            "check_in_baggage": 14.0,
+                            "seat": "01C",
+                            "seat_type": "AISLE"
+                        },
+                        {
+                            "first_name": "Abhishek",
+                            "last_name": "kumar",
+                            "gender": "MALE",
+                            "age": 38,
+                            "age_category": "Adult",
+                            "hand_baggage": 6.5,
+                            "check_in_baggage": 16.0,
+                            "seat": "01A",
+                            "seat_type": "WINDOW"
+                        },
+                        {
+                            "first_name": "Roushan",
+                            "last_name": "Kumar",
+                            "gender": "MALE",
+                            "age": 28,
+                            "age_category": "Adult",
+                            "hand_baggage": 0.0,
+                            "check_in_baggage": 14.0,
+                            "seat": "01F",
+                            "seat_type": "WINDOW"
+                        }
+                    ]
+                }
+                ```
 
             *  401 (**Unauthorized**)
                      - returns this message if user does not have proper permission for this request
 
-            * 403 (**Forbidden**)
+            *  403 (**Forbidden**)
                 - returns this error if user is not authenticated  or missing some csrf token in the request header
                 - sample error message 
                 ```
@@ -719,6 +818,9 @@ endpoints :=
                     "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
                 }
                 ```
+
+
+
 
 
                         
