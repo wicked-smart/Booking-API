@@ -207,4 +207,4 @@ CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
-CSRF_TRUSTED_ORIGINS = ["https://flight-booking-rest-api-355b8ab4795a.herokuapp.com/"]
+CSRF_TRUSTED_ORIGINS = ["https://flight-booking-rest-api-355b8ab4795a.herokuapp.com"]

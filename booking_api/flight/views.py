@@ -644,7 +644,7 @@ def bookings(request, booking_ref):
                                                               'booking': booking, 
                                                               'ret_booking': ret_booking,
                                                               'flight': booking.flight, 
-                                                              'ret_flight': ret_booking.flight}
+                                                              'return_flight': ret_booking.flight}
                                                             )
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Booking.DoesNotExist:

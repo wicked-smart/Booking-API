@@ -826,6 +826,41 @@ endpoints :=
     Allowed Methods: GET, PUT
     {{BASE_URL}}/bookings/:booking_ref
     **GET**
+    - Header Parameters
+        - X-CSRFToken
+            - type: string
+            - description: csrf token value returned after logging in                
+            - example: 3CwkDICL51KCKCF3QbIflWlXvDiMN55S
+
+
+    - Path Parameters
+        * booking_ref
+            - type: string
+            - Description: booking_ref returned on booking a flight
+            - max length: 6
+            - example: /bookings/DE56RH
+        
+        * Responses:
+            - 200 (**succesfull request**)
+                - returns booking object on succesful request. If booking is ONE_WAY , single booking info is returned , if booking is round_trip and airlines is same , single consolidated booking info is returned , if airlines is different , `booking` and `return_booking` data is returned!
+            
+            * 400 (**Bad Request**)
+                 - appropriate error messages , if request is bad like missing or wrong booking_ref
+
+            *  401 (**Unauthorized**)
+                - returns this message if user does not have proper permission for this request
+
+            *  403 (**Forbidden**)
+                - returns this error if user is not authenticated  or missing some csrf token in the request header
+                - sample error message 
+                ```
+                {
+                    "detail": "CSRF Failed: CSRF token from the 'X-Csrftoken' HTTP header incorrect."
+                }
+                ```
+            * 500 (**Internal Server Error**)
+                - returns internal server error message with proper exception handling data
+
 
     **PUT**
     - Header Parameters
