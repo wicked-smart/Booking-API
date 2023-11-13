@@ -1,8 +1,11 @@
 from flight.rate_limit.gcra import is_rate_limited
 import redis
+import os
 
-r = redis.Redis(host='localhost', port=6379, db=0)
+redis_url = os.environ.get('REDIS_URL')
+r =  redis.Redis.from_url(redis_url)
 
+print(r)
 def rate_limit(limit, period):
     def decorator(task):
         def wrapper(*args, **kwargs):
