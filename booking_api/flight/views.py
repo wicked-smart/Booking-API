@@ -1338,6 +1338,17 @@ def testing_celery(request):
 
 
 '''
+@api_view(['POST'])
+def test_rate_limit_add(request):
+    data = request.data
+    a = data.get('a')
+    b = data.get('b')
+    result = add.delay(a,b).get()
+
+    if result:
+        return Response({"message": f"result is {result} "}, status=status.HTTP_200_OK)
+    elif result is None:
+        return Response({"message": "Too many requests! try after sometime"}, staus=status.HTTP_429_TOO_MANY_REQUESTS)
 
 @api_view(['GET'])
 def test_pdf_gen(request):

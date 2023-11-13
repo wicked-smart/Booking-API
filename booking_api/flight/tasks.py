@@ -7,8 +7,10 @@ from .utils import *
 import boto3 
 from botocore.exceptions import ClientError
 from io import BytesIO
+from .decorators import rate_limit
 
 @shared_task
+@rate_limit(limit=4, period=timedelta(seconds=60))
 def add(a,b):
     return a+b
 
